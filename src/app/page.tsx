@@ -1,9 +1,11 @@
-import fixture from "../../fixtures/debtor-standard.json";
+import { getAccount } from "@/lib/account/actions";
 
 import { DebtorPortal } from "@/components/debtor-portal";
 
-export default function Home() {
-  // Starter data only: replace this fixture with a real account loaded from
-  // your database once you begin the challenge.
-  return <DebtorPortal fixture={fixture} />;
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const accountContext = await getAccount("acc_standard_001");
+
+  return <DebtorPortal accountContext={accountContext} />;
 }

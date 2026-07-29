@@ -20,10 +20,10 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  normalizeLegacyFixture,
+  // normalizeLegacyFixture,
   type AccountContext,
   type CallAppointment,
-  type LegacyAccountFixture,
+  // type LegacyAccountFixture,
   type PromiseToPay,
   type RelatedPerson,
   type Transaction,
@@ -31,8 +31,11 @@ import {
 import type { ChatResponse } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
 
+// type PortalProps = {
+//   fixture: LegacyAccountFixture;
+// };
 type PortalProps = {
-  fixture: LegacyAccountFixture;
+  accountContext: AccountContext;
 };
 
 type View = "dashboard" | "conversations";
@@ -96,12 +99,12 @@ function getInitials(firstName: string, lastName: string) {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`;
 }
 
-export function DebtorPortal({ fixture }: PortalProps) {
+export function DebtorPortal({ accountContext }: PortalProps) {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const accountContext = normalizeLegacyFixture(fixture);
+  // const accountContext = normalizeLegacyFixture(fixture);
   const fullName = `${accountContext.account.accountHolderFirstName} ${accountContext.account.accountHolderLastName}`;
 
   const handleSendMessage = async () => {
@@ -135,13 +138,11 @@ export function DebtorPortal({ fixture }: PortalProps) {
           conversationId: "starter-conversation",
         }),
       });
-      const body = (await response.json()) as
-        | ChatResponse
-        | { error?: string };
+      const body = (await response.json()) as ChatResponse | { error?: string };
       const assistantReply =
         "message" in body
           ? body.message.content
-          : body.error ?? "The chat API did not return a usable response.";
+          : (body.error ?? "The chat API did not return a usable response.");
 
       setMessages((currentMessages) => [
         ...currentMessages,
@@ -225,7 +226,10 @@ export function DebtorPortal({ fixture }: PortalProps) {
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(246,250,252,0.8))] p-4 sm:p-6 lg:p-8">
           {activeView === "dashboard" ? (
-            <DashboardView accountContext={accountContext} fullName={fullName} />
+            <DashboardView
+              accountContext={accountContext}
+              fullName={fullName}
+            />
           ) : (
             <ConversationView
               draft={draft}
@@ -285,10 +289,7 @@ function DashboardView({
           <MetricCard
             icon={Euro}
             label="Current balance"
-            value={formatCurrency(
-              account.balanceCents,
-              account.currency,
-            )}
+            value={formatCurrency(account.balanceCents, account.currency)}
           />
           <MetricCard
             icon={CalendarDays}
@@ -452,7 +453,10 @@ function ConversationView({
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages]);
 
   return (
@@ -514,8 +518,8 @@ function ConversationView({
                 No conversation yet
               </h3>
               <p className="mt-3 max-w-md text-sm leading-7 text-slate-600">
-                Send the first message and the thread will call the starter
-                chat API route.
+                Send the first message and the thread will call the starter chat
+                API route.
               </p>
             </div>
           </div>
@@ -539,7 +543,10 @@ function ConversationView({
           />
           <div className="mt-2 flex items-center justify-between gap-3 px-2">
             <p className="text-xs text-slate-500">
-              Send with <span className="font-medium text-slate-700">Cmd/Ctrl + Enter</span>
+              Send with{" "}
+              <span className="font-medium text-slate-700">
+                Cmd/Ctrl + Enter
+              </span>
             </p>
             <Button
               type="submit"
@@ -692,7 +699,9 @@ function RelatedPersonRow({ person }: { person: RelatedPerson }) {
             {person.name}
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            {person.relationship ? formatStatus(person.relationship) : "Related person"}
+            {person.relationship
+              ? formatStatus(person.relationship)
+              : "Related person"}
           </p>
         </div>
         <span
@@ -759,11 +768,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
   );
 }
 
-function CallAppointmentRow({
-  appointment,
-}: {
-  appointment: CallAppointment;
-}) {
+function CallAppointmentRow({ appointment }: { appointment: CallAppointment }) {
   return (
     <div className="rounded-[1rem] border border-slate-200/75 bg-slate-50/75 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

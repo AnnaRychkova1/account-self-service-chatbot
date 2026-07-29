@@ -73,6 +73,10 @@ The application follows a layered architecture that separates message parsing, b
 - Configure the local environment.
 - Verify the application builds and runs successfully.
 
+#### Notes
+
+- Configured OpenAI, Resend, and Supabase environment variables.
+
 ---
 
 ## 2. Configure initial deployment
@@ -85,6 +89,10 @@ The application follows a layered architecture that separates message parsing, b
 - Configure the required production environment variables.
 - Deploy the starter application.
 - Verify the production deployment.
+
+#### Notes
+
+- Deployment only (no commit).
 
 ---
 
@@ -100,6 +108,10 @@ The application follows a layered architecture that separates message parsing, b
 - Load the complete `AccountContext`.
 - Implement account read operations.
 - Add unit tests for account data loading.
+
+#### Notes
+
+- Introduced a mapper to convert Supabase records into the `AccountContext` domain model.
 
 ---
 
