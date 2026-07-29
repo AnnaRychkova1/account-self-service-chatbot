@@ -27,6 +27,15 @@ export type AccountHolder = {
   lastPaymentAmountCents: number;
 };
 
+export type UpdateAccountHolderInput = {
+  accountHolderFirstName?: string;
+  accountHolderLastName?: string;
+  email?: string;
+  phone?: string;
+  address?: Partial<Address>;
+  preferredContactMethod?: ContactMethod;
+};
+
 export type RelatedPerson = {
   id: string;
   name: string;
@@ -103,9 +112,7 @@ export type AccountContext = {
 
 export type LegacyFixtureAccount = Omit<
   AccountHolder,
-  | "accountHolderFirstName"
-  | "accountHolderLastName"
-  | "preferredContactMethod"
+  "accountHolderFirstName" | "accountHolderLastName" | "preferredContactMethod"
 > & {
   debtorFirstName: string;
   debtorLastName: string;

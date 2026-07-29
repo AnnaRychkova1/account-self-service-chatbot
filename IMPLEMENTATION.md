@@ -124,8 +124,13 @@ The application follows a layered architecture that separates message parsing, b
 - Update account holder information.
 - Validate account holder data.
 - Persist changes to Supabase.
-- Verify API endpoints using Postman.
+- Return the updated account context
 - Add unit tests for account holder actions.
+
+#### Notes
+
+- Centralized account holder validation and field mapping.
+- Added comprehensive offline unit tests covering success, validation, and error scenarios.
 
 ---
 
