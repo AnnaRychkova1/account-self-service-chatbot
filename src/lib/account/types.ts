@@ -1,3 +1,5 @@
+import { AccountHolderRow } from "./mappers";
+
 export type ContactMethod = "email" | "sms" | "phone";
 
 export type Address = {
@@ -180,3 +182,23 @@ export function normalizeLegacyFixture(
     },
   };
 }
+
+export type DatabaseError = {
+  message: string;
+};
+
+export type AccountHolderUpdateRow = Partial<
+  Pick<
+    AccountHolderRow,
+    | "first_name"
+    | "last_name"
+    | "email"
+    | "phone"
+    | "address_line1"
+    | "address_line2"
+    | "city"
+    | "postal_code"
+    | "country"
+    | "preferred_contact_method"
+  >
+>;

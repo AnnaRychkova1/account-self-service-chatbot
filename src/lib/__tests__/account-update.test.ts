@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { updateAccountHolder } from "@/lib/account/actions";
+import { updateAccountHolder } from "@/lib/account/services/account-update";
 
 const ACCOUNT_ID = "acc_standard_001";
 const ACCOUNT_HOLDER_ID = "holder-1";

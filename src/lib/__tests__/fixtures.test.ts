@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import disputeFixture from "../../../fixtures/debtor-dispute.json";
 import hardshipFixture from "../../../fixtures/debtor-hardship.json";
 import standardFixture from "../../../fixtures/debtor-standard.json";
-import { normalizeLegacyFixture } from "./types";
-import type { LegacyAccountFixture } from "./types";
+import { normalizeLegacyFixture } from "../account/types";
+import type { LegacyAccountFixture } from "../account/types";
 
 const fixtures = [
   standardFixture,

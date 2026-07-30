@@ -47,16 +47,44 @@ export type ChatActionResult = {
   callAppointments?: CallAppointment[];
   missingFields?: string[];
   notificationQueued?: boolean;
+  pendingAction?: PendingChatAction;
+};
+
+export type PendingChatAction = {
+  action: ChatAction;
+  fields: Record<string, string>;
+  missingFields: string[];
+};
+
+export type ParsedAction = {
+  action: ChatAction;
+  fields: Record<string, string>;
+  missingFields: string[];
+};
+
+export type OpenRouterResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
 };
 
 export type ChatRequest = {
   accountId: string;
   message: string;
   conversationId?: string;
+  pendingAction?: PendingChatAction;
 };
 
 export type ChatResponse = {
   conversationId: string;
   message: ChatMessage;
   result: ChatActionResult;
+  pendingAction: PendingChatAction | null;
+};
+
+export type NotificationInput = {
+  accountId: string;
+  changedFields: string[];
 };

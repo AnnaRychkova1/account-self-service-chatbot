@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   CheckCircle2,
@@ -20,20 +21,15 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  // normalizeLegacyFixture,
   type AccountContext,
   type CallAppointment,
-  // type LegacyAccountFixture,
   type PromiseToPay,
   type RelatedPerson,
   type Transaction,
 } from "@/lib/account/types";
-import type { ChatResponse } from "@/lib/chat/types";
+import type { ChatResponse, PendingChatAction } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
 
-// type PortalProps = {
-//   fixture: LegacyAccountFixture;
-// };
 type PortalProps = {
   accountContext: AccountContext;
 };
@@ -100,12 +96,15 @@ function getInitials(firstName: string, lastName: string) {
 }
 
 export function DebtorPortal({ accountContext }: PortalProps) {
+  const router = useRouter();
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // const accountContext = normalizeLegacyFixture(fixture);
   const fullName = `${accountContext.account.accountHolderFirstName} ${accountContext.account.accountHolderLastName}`;
+  const [pendingAction, setPendingAction] = useState<PendingChatAction | null>(
+    null,
+  );
 
   const handleSendMessage = async () => {
     const nextMessage = draft.trim();
@@ -136,30 +135,51 @@ export function DebtorPortal({ accountContext }: PortalProps) {
           accountId: accountContext.account.accountId,
           message: nextMessage,
           conversationId: "starter-conversation",
+          pendingAction: pendingAction ?? undefined,
         }),
       });
+
       const body = (await response.json()) as ChatResponse | { error?: string };
-      const assistantReply =
-        "message" in body
-          ? body.message.content
-          : (body.error ?? "The chat API did not return a usable response.");
+
+      if (!response.ok) {
+        const errorMessage =
+          "error" in body && body.error
+            ? body.error
+            : "The chat request failed.";
+
+        throw new Error(errorMessage);
+      }
+
+      if (!("result" in body) || !("message" in body)) {
+        throw new Error("The chat API returned an invalid response.");
+      }
+
+      if (body.result.success) {
+        router.refresh();
+      }
+
+      setPendingAction(body.pendingAction ?? null);
 
       setMessages((currentMessages) => [
         ...currentMessages,
         {
           id: `agent-${sentAt + 1}`,
           role: "agent",
-          content: assistantReply,
+          content: body.message.content,
         },
       ]);
-    } catch {
+    } catch (error) {
+      console.error("Chat request failed:", error);
+
       setMessages((currentMessages) => [
         ...currentMessages,
         {
           id: `agent-${sentAt + 1}`,
           role: "agent",
           content:
-            "The chat API could not be reached. Check the API route and dev server logs.",
+            error instanceof Error
+              ? error.message
+              : "The chat API could not be reached.",
         },
       ]);
     } finally {

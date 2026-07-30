@@ -1,4 +1,4 @@
-import { getAccount } from "@/lib/account/actions";
+import { getAccount } from "@/lib/account/services/account-get";
 
 import { DebtorPortal } from "@/components/debtor-portal";
 

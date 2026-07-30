@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { getAccount } from "@/lib/account/actions";
+import { getAccount } from "@/lib/account/services/account-get";
 
 const accountHolderRow = {
   id: "f608019a-f288-42ef-ae51-f0b8ad2c65f1",

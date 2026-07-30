@@ -75,7 +75,7 @@ The application follows a layered architecture that separates message parsing, b
 
 #### Notes
 
-- Configured OpenAI, Resend, and Supabase environment variables.
+- Configured OpenRouter, Resend, and Supabase environment variables.
 
 ---
 
@@ -124,7 +124,6 @@ The application follows a layered architecture that separates message parsing, b
 - Update account holder information.
 - Validate account holder data.
 - Persist changes to Supabase.
-- Return the updated account context
 - Add unit tests for account holder actions.
 
 #### Notes
@@ -140,12 +139,20 @@ The application follows a layered architecture that separates message parsing, b
 
 `feat: implement chatbot conversation flow`
 
-- Connect OpenAI.
+- Connect OpenRouter.
 - Parse user messages into structured actions.
 - Implement the action router.
 - Support multi-turn conversations.
 - Validate all LLM output.
-- Mock OpenAI in tests.
+- Return account action results.
+- Refresh the account context after successful account-holder updates.
+- Support reading account-holder details and the preferred contact method.
+- Mock OpenRouter in tests.
+
+#### Notes
+
+- Implemented deterministic action routing with runtime validation of all LLM responses.
+- Added multi-turn conversation support by preserving pending actions across follow-up messages.
 
 ---
 
