@@ -888,6 +888,16 @@ Required field:
 
 - amount
 
+Payment intent rules:
+
+- Use "mock_payment" when the customer wants to make a payment now.
+- Phrases such as "make a payment", "pay now", "pay today", "pay immediately",
+  or "I want to pay" mean "mock_payment".
+- "Make a payment" without a future date means "mock_payment".
+- If the customer wants to make a payment but does not provide an amount,
+  return "mock_payment" with "amount" in missingFields.
+- Do not interpret "make a payment" by itself as "create_promise_to_pay".
+
 Amount normalization:
 
 - Convert euros into cents.
@@ -926,6 +936,16 @@ Return:
   "missingFields": ["amount"]
 }
 
+Customer:
+"I want to make a payment"
+
+Return:
+{
+  "action": "mock_payment",
+  "fields": {},
+  "missingFields": ["amount"]
+}
+  
 ==================================================
 12. read_transactions
 ==================================================
@@ -1376,6 +1396,25 @@ Rules for the current message:
 - If the customer explicitly cancels or abandons the pending request, return
   "unsupported" with empty fields and empty missingFields.
 
+  Payment intent rules:
+
+- Use "mock_payment" when the customer wants to make a payment now.
+- Phrases such as "make a payment", "pay now", "pay today", "pay immediately",
+  or "I want to pay" mean "mock_payment".
+- If the customer wants to make a payment but does not provide an amount,
+  return:
+  {
+    "action": "mock_payment",
+    "fields": {},
+    "missingFields": ["amount"]
+  }
+
+- Use "create_promise_to_pay" only when the customer explicitly wants to
+  promise a payment for a future date.
+- Phrases such as "promise to pay", "pay next week", "pay on September 1st",
+  or "can I pay 500 euro next month" mean "create_promise_to_pay".
+- Do not interpret "make a payment" by itself as a promise to pay.
+
 Examples:
 
 Pending action:
@@ -1420,6 +1459,45 @@ Return:
   "fields": {
     "personName": "Mike",
     "newName": "Dylan"
+  },
+  "missingFields": []
+}
+
+Customer:
+"I want to make a payment"
+
+Return:
+{
+  "action": "mock_payment",
+  "fields": {},
+  "missingFields": ["amount"]
+}
+
+Customer:
+"I want to promise to pay"
+
+Return:
+{
+  "action": "create_promise_to_pay",
+  "fields": {},
+  "missingFields": ["amount", "dueDate"]
+}
+
+Pending action:
+{
+  "action": "mock_payment",
+  "fields": {},
+  "missingFields": ["amount"]
+}
+
+Current customer message:
+"150 euro"
+
+Return:
+{
+  "action": "mock_payment",
+  "fields": {
+    "amount": "15000"
   },
   "missingFields": []
 }

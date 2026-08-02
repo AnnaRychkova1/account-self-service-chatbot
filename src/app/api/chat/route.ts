@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     const result = await executeChatAction({
       accountId,
       parsedAction,
+      requestId: body.requestId,
     });
 
     const pendingAction =

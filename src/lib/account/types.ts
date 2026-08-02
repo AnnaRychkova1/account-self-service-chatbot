@@ -318,3 +318,14 @@ export type PromiseToPayInsertRow = {
   due_date: string;
   status: PromiseToPay["status"];
 };
+
+export type MockPaymentResult = {
+  transactionId: string;
+  newBalanceCents: number;
+  duplicate: boolean;
+};
+
+export type MockPaymentInput = {
+  amountCents: number;
+  requestId: string;
+};

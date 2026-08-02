@@ -75,6 +75,7 @@ export type ChatRequest = {
   message: string;
   conversationId?: string;
   pendingAction?: PendingChatAction;
+  requestId?: string;
 };
 
 export type ChatResponse = {

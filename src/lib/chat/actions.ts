@@ -3,6 +3,7 @@ import { handleUpdateAccountHolder } from "./handlers/chat-update";
 import { handleReadAccountHolder } from "./handlers/chat-read";
 import { handleRelatedPeople } from "./handlers/chat-related-people";
 import { handlePromiseToPay } from "./handlers/chat-promise-to-pay";
+import { handlePayment } from "./handlers/chat-payment";
 
 function notImplemented(action: ChatAction): ChatActionResult {
   return {
@@ -15,9 +16,11 @@ function notImplemented(action: ChatAction): ChatActionResult {
 export async function executeChatAction({
   accountId,
   parsedAction,
+  requestId,
 }: {
   accountId: string;
   parsedAction: ParsedAction;
+  requestId?: string;
 }): Promise<ChatActionResult> {
   console.log("executeChatAction:", {
     accountId,
@@ -66,7 +69,11 @@ export async function executeChatAction({
 
     case "mock_payment":
     case "read_transactions":
-      return notImplemented(parsedAction.action);
+      return handlePayment({
+        accountId: normalizedAccountId,
+        parsedAction,
+        requestId,
+      });
 
     case "book_call_appointment":
     case "read_call_appointments":

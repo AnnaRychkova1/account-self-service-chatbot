@@ -126,6 +126,7 @@ export function DebtorPortal({ accountContext }: PortalProps) {
     setIsSending(true);
 
     try {
+      const requestId = crypto.randomUUID();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -136,6 +137,7 @@ export function DebtorPortal({ accountContext }: PortalProps) {
           message: nextMessage,
           conversationId: "starter-conversation",
           pendingAction: pendingAction ?? undefined,
+          requestId,
         }),
       });
 
