@@ -1,90 +1,15 @@
 import type {
   AccountContext,
+  AccountContextRows,
   CallAppointment,
-  ContactMethod,
+  CallAppointmentRow,
   PromiseToPay,
+  PromiseToPayRow,
   RelatedPerson,
+  RelatedPersonRow,
   Transaction,
+  TransactionRow,
 } from "@/lib/account/types";
-
-export type AccountHolderRow = {
-  id: string;
-  account_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address_line1: string;
-  address_line2: string | null;
-  city: string;
-  postal_code: string;
-  country: string;
-  preferred_contact_method: ContactMethod;
-  reference: string;
-  creditor_name: string;
-  currency: string;
-  balance_cents: number;
-  status: string;
-  days_past_due: number;
-  minimum_payment_cents: number;
-  last_payment_date: string | null;
-  last_payment_amount_cents: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type RelatedPersonRow = {
-  id: string;
-  account_holder_id: string;
-  name: string;
-  email: string;
-  phone: string;
-  relationship: string | null;
-  authorized_to_act: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export type PromiseToPayRow = {
-  id: string;
-  account_holder_id: string;
-  amount_cents: number;
-  currency: string;
-  due_date: string;
-  status: PromiseToPay["status"];
-  created_at: string;
-};
-
-export type TransactionRow = {
-  id: string;
-  account_holder_id: string;
-  type: Transaction["type"];
-  status: Transaction["status"];
-  amount_cents: number;
-  currency: string;
-  description: string;
-  transaction_date: string;
-  created_at: string;
-};
-
-export type CallAppointmentRow = {
-  id: string;
-  account_holder_id: string;
-  scheduled_at: string;
-  phone: string;
-  reason: string | null;
-  status: CallAppointment["status"];
-  created_at: string;
-  updated_at: string;
-};
-
-export type AccountContextRows = {
-  accountHolder: AccountHolderRow;
-  relatedPeople: RelatedPersonRow[];
-  promisesToPay: PromiseToPayRow[];
-  transactions: TransactionRow[];
-  callAppointments: CallAppointmentRow[];
-};
 
 function mapRelatedPerson(row: RelatedPersonRow): RelatedPerson {
   return {
@@ -188,11 +113,8 @@ export function mapAccountContext({
     },
 
     relatedPeople: relatedPeople.map(mapRelatedPerson),
-
     promisesToPay: promisesToPay.map(mapPromiseToPay),
-
     transactions: transactions.map(mapTransaction),
-
     callAppointments: callAppointments.map(mapCallAppointment),
 
     notificationRules: {

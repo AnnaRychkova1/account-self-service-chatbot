@@ -1,6 +1,7 @@
 import type { ChatAction, ChatActionResult, ParsedAction } from "./types";
 import { handleUpdateAccountHolder } from "./handlers/chat-update";
 import { handleReadAccountHolder } from "./handlers/chat-read";
+import { handleRelatedPeople } from "./handlers/chat-related-people";
 
 function notImplemented(action: ChatAction): ChatActionResult {
   return {
@@ -50,7 +51,10 @@ export async function executeChatAction({
     case "update_related_person":
     case "remove_related_person":
     case "read_related_people":
-      return notImplemented(parsedAction.action);
+      return handleRelatedPeople({
+        accountId: normalizedAccountId,
+        parsedAction,
+      });
 
     case "create_promise_to_pay":
     case "read_promises_to_pay":
@@ -84,7 +88,7 @@ function getClarificationReply(parsedAction: ParsedAction): string {
   const intentType = parsedAction.fields.intentType;
 
   if (intentType === "update") {
-    return "What information would you like to update? You can change your name, email, phone number, address, or preferred contact method.";
+    return "What account information or service would you like to update?";
   }
 
   if (intentType === "read") {

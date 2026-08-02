@@ -132,6 +132,25 @@ function mapFieldsToUpdateInput(
 }
 
 function getMissingFieldReply(missingFields: string[]): string | null {
+  if (missingFields.length === 0) {
+    return null;
+  }
+
+  if (
+    missingFields.includes("firstName") &&
+    missingFields.includes("lastName")
+  ) {
+    return "What first and last name would you like to use?";
+  }
+
+  if (missingFields.includes("firstName")) {
+    return "What first name would you like to use?";
+  }
+
+  if (missingFields.includes("lastName")) {
+    return "What last name would you like to use?";
+  }
+
   if (missingFields.includes("phone")) {
     return "What phone number would you like to use?";
   }
@@ -140,11 +159,8 @@ function getMissingFieldReply(missingFields: string[]): string | null {
     return "What email address would you like to use?";
   }
 
-  if (
-    missingFields.includes("firstName") ||
-    missingFields.includes("lastName")
-  ) {
-    return "What first and last name would you like to use?";
+  if (missingFields.includes("preferredContactMethod")) {
+    return "Which contact method would you prefer: email, SMS, or phone?";
   }
 
   if (missingFields.includes("addressLine1")) {
@@ -167,11 +183,7 @@ function getMissingFieldReply(missingFields: string[]): string | null {
     return "What country would you like to use?";
   }
 
-  if (missingFields.includes("preferredContactMethod")) {
-    return "Which contact method would you prefer: email, SMS, or phone?";
-  }
-
-  return null;
+  return "Please provide the missing account-holder information.";
 }
 
 function getSuccessReply(

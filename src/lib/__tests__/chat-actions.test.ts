@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeChatAction } from "@/lib/chat/actions";
 import { handleReadAccountHolder } from "@/lib/chat/handlers/chat-read";
 import { handleUpdateAccountHolder } from "@/lib/chat/handlers/chat-update";
+import { handleRelatedPeople } from "@/lib/chat/handlers/chat-related-people";
 
 import type {
   ChatAction,
@@ -18,9 +19,15 @@ vi.mock("@/lib/chat/handlers/chat-update", () => ({
   handleUpdateAccountHolder: vi.fn(),
 }));
 
+vi.mock("@/lib/chat/handlers/chat-related-people", () => ({
+  handleRelatedPeople: vi.fn(),
+}));
+
 const mockedHandleReadAccountHolder = vi.mocked(handleReadAccountHolder);
 
 const mockedHandleUpdateAccountHolder = vi.mocked(handleUpdateAccountHolder);
+
+const mockedHandleRelatedPeople = vi.mocked(handleRelatedPeople);
 
 function createParsedAction(
   action: ChatAction,
@@ -54,6 +61,7 @@ describe("executeChatAction", () => {
 
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
     });
 
     it("trims the account ID before passing it to a handler", async () => {
@@ -77,6 +85,8 @@ describe("executeChatAction", () => {
         parsedAction,
       });
 
+      expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
@@ -108,6 +118,7 @@ describe("executeChatAction", () => {
         });
 
         expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+        expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
         expect(result).toEqual(handlerResult);
       },
     );
@@ -141,16 +152,48 @@ describe("executeChatAction", () => {
       });
 
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+      expect(result).toEqual(handlerResult);
+    });
+  });
+
+  describe("related people routing", () => {
+    it.each<ChatAction>([
+      "add_related_person",
+      "update_related_person",
+      "remove_related_person",
+      "read_related_people",
+    ])("routes %s to the related people handler", async (action) => {
+      const handlerResult: ChatActionResult = {
+        action,
+        success: true,
+        reply: "Done.",
+      };
+
+      mockedHandleRelatedPeople.mockResolvedValueOnce(handlerResult);
+
+      const parsedAction = createParsedAction(action);
+
+      const result = await executeChatAction({
+        accountId: "account-123",
+        parsedAction,
+      });
+
+      expect(mockedHandleRelatedPeople).toHaveBeenCalledOnce();
+
+      expect(mockedHandleRelatedPeople).toHaveBeenCalledWith({
+        accountId: "account-123",
+        parsedAction,
+      });
+
+      expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
 
   describe("features that are not implemented yet", () => {
     it.each<ChatAction>([
-      "add_related_person",
-      "update_related_person",
-      "remove_related_person",
-      "read_related_people",
       "create_promise_to_pay",
       "read_promises_to_pay",
       "mock_payment",
@@ -171,6 +214,7 @@ describe("executeChatAction", () => {
 
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
     });
   });
 
@@ -190,8 +234,7 @@ describe("executeChatAction", () => {
       expect(result).toEqual({
         action: "clarify",
         success: false,
-        reply:
-          "What information would you like to update? You can change your name, email, phone number, address, or preferred contact method.",
+        reply: "What account information or service would you like to update?",
       });
     });
 

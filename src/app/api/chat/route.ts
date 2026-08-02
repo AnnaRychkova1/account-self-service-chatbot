@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     });
 
     const pendingAction =
-      parsedAction.missingFields.length > 0
+      (result.pendingAction ?? parsedAction.missingFields.length > 0)
         ? {
             action: parsedAction.action,
             fields: parsedAction.fields,
@@ -99,15 +99,39 @@ function normalizeParsedAction(
     return parsedAction;
   }
 
-  if (Object.keys(parsedAction.fields).length === 0) {
-    return parsedAction;
+  const fields = { ...parsedAction.fields };
+  const missingFields = new Set(parsedAction.missingFields);
+
+  const phoneValue = fields.phone?.trim().toLowerCase();
+
+  if (phoneValue === "phone" || phoneValue === "phone number") {
+    delete fields.phone;
+    missingFields.add("phone");
+  }
+
+  const emailValue = fields.email?.trim().toLowerCase();
+
+  if (emailValue === "email" || emailValue === "email address") {
+    delete fields.email;
+    missingFields.add("email");
+  }
+
+  const normalizedAction: ParsedAction = {
+    ...parsedAction,
+    fields,
+    missingFields: [...missingFields],
+  };
+
+  if (Object.keys(normalizedAction.fields).length === 0) {
+    return normalizedAction;
   }
 
   if (!pendingAction) {
     return {
-      ...parsedAction,
+      ...normalizedAction,
       missingFields: [],
     };
   }
-  return parsedAction;
+
+  return normalizedAction;
 }

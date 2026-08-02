@@ -163,7 +163,8 @@ The application follows a layered architecture that separates message parsing, b
 `feat: implement related people actions`
 
 - Read, add, update, and remove related people.
-- Validate user input.
+- Store name, email, phone number, and authorization status.
+- Validate all related person input.
 - Handle missing and ambiguous information.
 - Persist related people changes in Supabase.
 - Add unit tests for related people workflows.

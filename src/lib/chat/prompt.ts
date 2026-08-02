@@ -577,7 +577,11 @@ Required fields for the action layer:
 Normalize authorizedToAct as:
 
 - "true" when the customer says the person may speak or act for them;
-- "false" when the customer clearly says the person is not authorized.
+- "true" for affirmative replies such as "yes", "yes please", "sure",
+  "they can", or "allow them" when authorizedToAct is the pending field;
+- "false" when the customer clearly says the person is not authorized;
+- "false" for negative replies such as "no", "no thanks", "they cannot",
+  or "do not allow them" when authorizedToAct is the pending field.
 
 Do not infer a person's legal name from a relationship.
 
@@ -691,6 +695,42 @@ Return:
   "fields": {
     "personName": "Mark Murphy",
     "newName": "Marcus Murphy"
+  },
+  "missingFields": []
+}
+
+Related-person updates may be partial.
+
+When the customer explicitly provides a new value for one related-person field,
+return only that field together with personName and leave missingFields empty.
+
+Do not require the other related-person fields when the customer updates only
+one field.
+
+Examples:
+
+Customer:
+"Mark is not authorized to act"
+
+Return:
+{
+  "action": "update_related_person",
+  "fields": {
+    "personName": "Mark",
+    "authorizedToAct": "false"
+  },
+  "missingFields": []
+}
+
+Customer:
+"Change Mark's email to mark.new@example.test"
+
+Return:
+{
+  "action": "update_related_person",
+  "fields": {
+    "personName": "Mark",
+    "email": "mark.new@example.test"
   },
   "missingFields": []
 }
@@ -1178,6 +1218,13 @@ Rules for the current message:
   the current message.
 - When intentType is present, combine it with the subject or details supplied
   in the current message.
+- Preserve the pending intentType unless the current message clearly contains
+  a new verb that starts a different request.
+- A subject-only follow-up does not replace the pending intent.
+- When pending intentType is "update" and the customer replies with
+  "related person" or "related people", return "update_related_person".
+- Do not interpret a subject-only follow-up as a read request when the pending
+  intentType is "update".
 - Do not return "clarify" when the combined meaning now identifies one concrete
   supported action.
 - Classify the combined meaning as that concrete supported action.
@@ -1191,6 +1238,11 @@ Rules for the current message:
   new request independently.
 - If the customer clearly requests something unsupported or unrelated, return
   "unsupported".
+- A field name by itself identifies which field the customer wants to update;
+  it is not the new field value.
+- Never return fields.phone = "phone" or fields.email = "email".
+- When the customer supplies only the name of an update field, keep that field
+  absent from fields and include it in missingFields.
 
 Examples:
 
@@ -1205,6 +1257,25 @@ Pending clarification:
 
 Current customer message:
 "phone number"
+
+Return:
+{
+  "action": "update_account_holder",
+  "fields": {},
+  "missingFields": ["phone"]
+}
+
+Pending clarification:
+{
+  "action": "clarify",
+  "fields": {
+    "intentType": "update"
+  },
+  "missingFields": ["action"]
+}
+
+Current customer message:
+"phone"
 
 Return:
 {
@@ -1232,6 +1303,25 @@ Return:
     "requestedField": "phone"
   },
   "missingFields": []
+}
+
+Pending clarification:
+{
+  "action": "clarify",
+  "fields": {
+    "intentType": "update"
+  },
+  "missingFields": ["action"]
+}
+
+Current customer message:
+"related people"
+
+Return:
+{
+  "action": "update_related_person",
+  "fields": {},
+  "missingFields": ["personName"]
 }
 `;
   }
@@ -1261,9 +1351,77 @@ Rules for the current message:
 - Keep a field in missingFields when the current message does not provide it.
 - Return all known fields for the action, not only fields extracted from the
   current message.
+- When exactly one field remains missing, interpret a short answer in the
+  context of that missing field.
+- When authorizedToAct is the only missing field, interpret affirmative replies
+  such as "yes", "yes please", "sure", "they can", or "allow them" as
+  authorizedToAct = "true".
+- When authorizedToAct is the only missing field, interpret negative replies
+  such as "no", "no thanks", "they cannot", or "do not allow them" as
+  authorizedToAct = "false".
+- Do not change a pending concrete action merely because the current message
+  is short or fragmentary.
+- If the pending action is update_related_person, continue interpreting the
+  message as update_related_person unless the customer clearly starts a
+  different supported request.
+- For update_related_person, wording such as "Mike to Dylan" means
+  personName = "Mike" and newName = "Dylan".
+- For update_related_person, do not add other supported update fields to
+  missingFields when the customer has already supplied at least one concrete
+  field to change.
+- Only include a field in missingFields when the customer explicitly indicated
+  that field should be changed but did not provide its new value.
 - If the customer clearly starts a different supported request, classify that
   request independently and do not merge unrelated pending fields into it.
 - If the customer explicitly cancels or abandons the pending request, return
   "unsupported" with empty fields and empty missingFields.
+
+Examples:
+
+Pending action:
+{
+  "action": "add_related_person",
+  "fields": {
+    "name": "Mike Murphy",
+    "email": "mike@example.test",
+    "phone": "+35387556666"
+  },
+  "missingFields": ["authorizedToAct"]
+}
+
+Current customer message:
+"yes"
+
+Return:
+{
+  "action": "add_related_person",
+  "fields": {
+    "name": "Mike Murphy",
+    "email": "mike@example.test",
+    "phone": "+35387556666",
+    "authorizedToAct": "true"
+  },
+  "missingFields": []
+}
+
+Pending action:
+{
+  "action": "update_related_person",
+  "fields": {},
+  "missingFields": ["personName"]
+}
+
+Current customer message:
+"Mike to Dylan"
+
+Return:
+{
+  "action": "update_related_person",
+  "fields": {
+    "personName": "Mike",
+    "newName": "Dylan"
+  },
+  "missingFields": []
+}
 `;
 }

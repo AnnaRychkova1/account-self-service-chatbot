@@ -424,11 +424,11 @@ describe("handleUpdateAccountHolder", () => {
       },
       {
         missingFields: ["firstName"],
-        expectedReply: "What first and last name would you like to use?",
+        expectedReply: "What first name would you like to use?",
       },
       {
         missingFields: ["lastName"],
-        expectedReply: "What first and last name would you like to use?",
+        expectedReply: "What last name would you like to use?",
       },
       {
         missingFields: ["addressLine1"],

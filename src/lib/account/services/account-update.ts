@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { assertNoDatabaseError, getAccount } from "./account-get";
+import {
+  assertNoDatabaseError,
+  getAccount,
+} from "@/lib/account/services/account-get";
 
 import type {
   AccountContext,

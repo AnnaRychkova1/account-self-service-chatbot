@@ -1,17 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { AccountContext, DatabaseError } from "@/lib/account/types";
-
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { mapAccountContext } from "@/lib/account/mappers";
 
 import {
-  mapAccountContext,
   type AccountHolderRow,
   type CallAppointmentRow,
   type PromiseToPayRow,
   type RelatedPersonRow,
   type TransactionRow,
-} from "@/lib/account/mappers";
+  type AccountContext,
+  type DatabaseError,
+} from "@/lib/account/types";
 
 export function assertNoDatabaseError(
   operation: string,
