@@ -6,6 +6,7 @@ import { handleUpdateAccountHolder } from "@/lib/chat/handlers/chat-update";
 import { handleRelatedPeople } from "@/lib/chat/handlers/chat-related-people";
 import { handlePromiseToPay } from "@/lib/chat/handlers/chat-promise-to-pay";
 import { handlePayment } from "@/lib/chat/handlers/chat-payment";
+import { handleCallAppointment } from "@/lib/chat/handlers/chat-call-appointment";
 
 import type {
   ChatAction,
@@ -33,6 +34,10 @@ vi.mock("@/lib/chat/handlers/chat-payment", () => ({
   handlePayment: vi.fn(),
 }));
 
+vi.mock("@/lib/chat/handlers/chat-call-appointment", () => ({
+  handleCallAppointment: vi.fn(),
+}));
+
 const mockedHandleReadAccountHolder = vi.mocked(handleReadAccountHolder);
 
 const mockedHandleUpdateAccountHolder = vi.mocked(handleUpdateAccountHolder);
@@ -42,6 +47,8 @@ const mockedHandleRelatedPeople = vi.mocked(handleRelatedPeople);
 const mockedHandlePromiseToPay = vi.mocked(handlePromiseToPay);
 
 const mockedHandlePayment = vi.mocked(handlePayment);
+
+const mockedHandleCallAppointment = vi.mocked(handleCallAppointment);
 
 function createParsedAction(
   action: ChatAction,
@@ -77,6 +84,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
       expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
+      expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
       expect(mockedHandlePayment).not.toHaveBeenCalled();
     });
 
@@ -105,6 +113,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
       expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
       expect(mockedHandlePayment).not.toHaveBeenCalled();
+      expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
@@ -139,6 +148,7 @@ describe("executeChatAction", () => {
         expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
         expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
         expect(mockedHandlePayment).not.toHaveBeenCalled();
+        expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
         expect(result).toEqual(handlerResult);
       },
     );
@@ -175,6 +185,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
       expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
       expect(mockedHandlePayment).not.toHaveBeenCalled();
+      expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
@@ -212,6 +223,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
       expect(mockedHandlePayment).not.toHaveBeenCalled();
+      expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
@@ -246,6 +258,7 @@ describe("executeChatAction", () => {
         expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
         expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
         expect(mockedHandlePayment).not.toHaveBeenCalled();
+        expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
         expect(result).toEqual(handlerResult);
       },
     );
@@ -283,25 +296,36 @@ describe("executeChatAction", () => {
         expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
         expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
         expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
-
+        expect(mockedHandleCallAppointment).not.toHaveBeenCalled();
         expect(result).toEqual(handlerResult);
       },
     );
   });
 
-  describe("features that are not implemented yet", () => {
+  describe("call appointment routing", () => {
     it.each<ChatAction>(["book_call_appointment", "read_call_appointments"])(
-      "returns not implemented for %s",
+      "routes %s to the call appointment handler",
       async (action) => {
+        const handlerResult: ChatActionResult = {
+          action,
+          success: true,
+          reply: "Call appointment action completed.",
+        };
+
+        mockedHandleCallAppointment.mockResolvedValueOnce(handlerResult);
+
+        const parsedAction = createParsedAction(action);
+
         const result = await executeChatAction({
           accountId: "account-123",
-          parsedAction: createParsedAction(action),
+          parsedAction,
         });
 
-        expect(result).toEqual({
-          action,
-          success: false,
-          reply: "This account feature has not been implemented yet.",
+        expect(mockedHandleCallAppointment).toHaveBeenCalledOnce();
+
+        expect(mockedHandleCallAppointment).toHaveBeenCalledWith({
+          accountId: "account-123",
+          parsedAction,
         });
 
         expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
@@ -309,6 +333,8 @@ describe("executeChatAction", () => {
         expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
         expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
         expect(mockedHandlePayment).not.toHaveBeenCalled();
+
+        expect(result).toEqual(handlerResult);
       },
     );
   });

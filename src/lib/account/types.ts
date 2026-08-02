@@ -329,3 +329,17 @@ export type MockPaymentInput = {
   amountCents: number;
   requestId: string;
 };
+
+export type CreateCallAppointmentInput = {
+  scheduledAt: string;
+  phone?: string;
+  reason?: string;
+};
+
+export type CallAppointmentInsertRow = {
+  account_holder_id: string;
+  scheduled_at: string;
+  phone: string;
+  reason: string | null;
+  status: CallAppointment["status"];
+};

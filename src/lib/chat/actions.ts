@@ -1,17 +1,10 @@
-import type { ChatAction, ChatActionResult, ParsedAction } from "./types";
+import type { ChatActionResult, ParsedAction } from "./types";
 import { handleUpdateAccountHolder } from "./handlers/chat-update";
 import { handleReadAccountHolder } from "./handlers/chat-read";
 import { handleRelatedPeople } from "./handlers/chat-related-people";
 import { handlePromiseToPay } from "./handlers/chat-promise-to-pay";
 import { handlePayment } from "./handlers/chat-payment";
-
-function notImplemented(action: ChatAction): ChatActionResult {
-  return {
-    action,
-    success: false,
-    reply: "This account feature has not been implemented yet.",
-  };
-}
+import { handleCallAppointment } from "./handlers/chat-call-appointment";
 
 export async function executeChatAction({
   accountId,
@@ -77,7 +70,10 @@ export async function executeChatAction({
 
     case "book_call_appointment":
     case "read_call_appointments":
-      return notImplemented(parsedAction.action);
+      return handleCallAppointment({
+        accountId: normalizedAccountId,
+        parsedAction,
+      });
 
     case "clarify":
       return {
