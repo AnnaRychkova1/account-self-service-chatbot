@@ -343,3 +343,9 @@ export type CallAppointmentInsertRow = {
   reason: string | null;
   status: CallAppointment["status"];
 };
+
+export type MockPaymentRpcRow = {
+  transaction_id: string;
+  new_balance_cents: number;
+  duplicate: boolean;
+};

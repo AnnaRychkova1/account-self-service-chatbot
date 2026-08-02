@@ -10,14 +10,9 @@ import type {
   AccountContext,
   MockPaymentInput,
   MockPaymentResult,
+  MockPaymentRpcRow,
   TransactionRow,
 } from "@/lib/account/types";
-
-type MockPaymentRpcRow = {
-  transaction_id: string;
-  new_balance_cents: number;
-  duplicate: boolean;
-};
 
 function validateMockPaymentInput(input: MockPaymentInput): MockPaymentInput {
   if (
