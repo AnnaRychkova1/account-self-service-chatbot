@@ -2,6 +2,7 @@ import type { ChatAction, ChatActionResult, ParsedAction } from "./types";
 import { handleUpdateAccountHolder } from "./handlers/chat-update";
 import { handleReadAccountHolder } from "./handlers/chat-read";
 import { handleRelatedPeople } from "./handlers/chat-related-people";
+import { handlePromiseToPay } from "./handlers/chat-promise-to-pay";
 
 function notImplemented(action: ChatAction): ChatActionResult {
   return {
@@ -58,7 +59,10 @@ export async function executeChatAction({
 
     case "create_promise_to_pay":
     case "read_promises_to_pay":
-      return notImplemented(parsedAction.action);
+      return handlePromiseToPay({
+        accountId: normalizedAccountId,
+        parsedAction,
+      });
 
     case "mock_payment":
     case "read_transactions":

@@ -4,6 +4,7 @@ import { executeChatAction } from "@/lib/chat/actions";
 import { handleReadAccountHolder } from "@/lib/chat/handlers/chat-read";
 import { handleUpdateAccountHolder } from "@/lib/chat/handlers/chat-update";
 import { handleRelatedPeople } from "@/lib/chat/handlers/chat-related-people";
+import { handlePromiseToPay } from "@/lib/chat/handlers/chat-promise-to-pay";
 
 import type {
   ChatAction,
@@ -23,11 +24,17 @@ vi.mock("@/lib/chat/handlers/chat-related-people", () => ({
   handleRelatedPeople: vi.fn(),
 }));
 
+vi.mock("@/lib/chat/handlers/chat-promise-to-pay", () => ({
+  handlePromiseToPay: vi.fn(),
+}));
+
 const mockedHandleReadAccountHolder = vi.mocked(handleReadAccountHolder);
 
 const mockedHandleUpdateAccountHolder = vi.mocked(handleUpdateAccountHolder);
 
 const mockedHandleRelatedPeople = vi.mocked(handleRelatedPeople);
+
+const mockedHandlePromiseToPay = vi.mocked(handlePromiseToPay);
 
 function createParsedAction(
   action: ChatAction,
@@ -62,6 +69,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+      expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
     });
 
     it("trims the account ID before passing it to a handler", async () => {
@@ -119,6 +127,7 @@ describe("executeChatAction", () => {
 
         expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
         expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+        expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
         expect(result).toEqual(handlerResult);
       },
     );
@@ -153,6 +162,7 @@ describe("executeChatAction", () => {
 
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+      expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
@@ -188,14 +198,48 @@ describe("executeChatAction", () => {
 
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
       expect(result).toEqual(handlerResult);
     });
   });
 
+  describe("promise to pay routing", () => {
+    it.each<ChatAction>(["create_promise_to_pay", "read_promises_to_pay"])(
+      "routes %s to the promise-to-pay handler",
+      async (action) => {
+        const handlerResult: ChatActionResult = {
+          action,
+          success: true,
+          reply: "Promise-to-pay action completed.",
+        };
+
+        mockedHandlePromiseToPay.mockResolvedValueOnce(handlerResult);
+
+        const parsedAction = createParsedAction(action);
+
+        const result = await executeChatAction({
+          accountId: "account-123",
+          parsedAction,
+        });
+
+        expect(mockedHandlePromiseToPay).toHaveBeenCalledOnce();
+
+        expect(mockedHandlePromiseToPay).toHaveBeenCalledWith({
+          accountId: "account-123",
+          parsedAction,
+        });
+
+        expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
+        expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
+        expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+
+        expect(result).toEqual(handlerResult);
+      },
+    );
+  });
+
   describe("features that are not implemented yet", () => {
     it.each<ChatAction>([
-      "create_promise_to_pay",
-      "read_promises_to_pay",
       "mock_payment",
       "read_transactions",
       "book_call_appointment",
@@ -215,6 +259,7 @@ describe("executeChatAction", () => {
       expect(mockedHandleReadAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleUpdateAccountHolder).not.toHaveBeenCalled();
       expect(mockedHandleRelatedPeople).not.toHaveBeenCalled();
+      expect(mockedHandlePromiseToPay).not.toHaveBeenCalled();
     });
   });
 

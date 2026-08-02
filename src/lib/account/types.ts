@@ -305,3 +305,16 @@ export type RelatedPersonUpdateRow = Partial<
     "name" | "email" | "phone" | "relationship" | "authorized_to_act"
   >
 >;
+
+export type CreatePromiseToPayInput = {
+  amountCents: number;
+  dueDate: string;
+};
+
+export type PromiseToPayInsertRow = {
+  account_holder_id: string;
+  amount_cents: number;
+  currency: string;
+  due_date: string;
+  status: PromiseToPay["status"];
+};
