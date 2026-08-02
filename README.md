@@ -1,8 +1,18 @@
-# Account Self-Service Chatbot Challenge
+# Account Self-Service Chatbot
 
-Build this starter into a credible self-service chatbot for a customer with an overdue account.
+A self-service chatbot for customers with overdue accounts, built with Next.js, TypeScript, Supabase, OpenRouter, and Resend.
 
-We want to see whether you can turn everyday messages into safe, testable actions that persist in a database. The UI can stay simple. We care most about the quality of the decisions behind it.
+The application converts free-text messages into validated structured actions, persists approved changes in Supabase, supports multi-turn clarification, and sends generic account-change notifications with encrypted PDF summaries.
+
+## Submission
+
+Live application: https://account-self-service-chatbot-two.vercel.app/
+
+Supporting documentation:
+
+- [Architecture diagram](./architecture-diagram.md)
+- [Verification matrix](./verification-matrix.md)
+- [Design note](./design-note.md)
 
 ## The task
 
@@ -182,14 +192,14 @@ Invite `wardch` as a collaborator when the submission is ready.
 
 We will score the submission using this rubric:
 
-| Area | Weight | Strong evidence |
-| --- | ---: | --- |
-| Correctness and persistence | 35% | Workflows operate end to end and persisted state remains correct after refresh, failure, or a repeated request. |
-| Safety and validation | 20% | Identity, invalid input, ambiguous requests, database exposure, and sensitive data are handled deliberately. |
-| Code and data design | 20% | Parsing, business logic, persistence, and side effects have clear boundaries and sensible concurrency choices. |
-| Tests | 5% | Offline deterministic tests cover core rules, failure paths, retries, and mocked boundaries. |
-| Chat workflow design | 10% | Intent extraction is constrained and follow-up turns complete pending work without unsafe guessing. |
-| Delivery and explanation | 10% | The deployed app works and the design note clearly explains decisions, limits, and next steps. |
+| Area                        | Weight | Strong evidence                                                                                                 |
+| --------------------------- | -----: | --------------------------------------------------------------------------------------------------------------- |
+| Correctness and persistence |    35% | Workflows operate end to end and persisted state remains correct after refresh, failure, or a repeated request. |
+| Safety and validation       |    20% | Identity, invalid input, ambiguous requests, database exposure, and sensitive data are handled deliberately.    |
+| Code and data design        |    20% | Parsing, business logic, persistence, and side effects have clear boundaries and sensible concurrency choices.  |
+| Tests                       |     5% | Offline deterministic tests cover core rules, failure paths, retries, and mocked boundaries.                    |
+| Chat workflow design        |    10% | Intent extraction is constrained and follow-up turns complete pending work without unsafe guessing.             |
+| Delivery and explanation    |    10% | The deployed app works and the design note clearly explains decisions, limits, and next steps.                  |
 
 We value a smaller, reliable implementation more than a broad collection of unfinished features.
 

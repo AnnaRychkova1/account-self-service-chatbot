@@ -237,7 +237,7 @@ describe("chat action acceptance contracts", () => {
   });
 
   it("records a one-time promise to pay with amount and future due date", async () => {
-    const updatedAccount = {
+    const updatedAccount: AccountContext = {
       ...accountContext,
       promisesToPay: [
         {
@@ -281,6 +281,7 @@ describe("chat action acceptance contracts", () => {
     mockedProcessMockPayment.mockResolvedValue({
       payment: {
         transactionId: "transaction-123",
+        newBalanceCents: 85000,
         duplicate: false,
       },
       account: {
