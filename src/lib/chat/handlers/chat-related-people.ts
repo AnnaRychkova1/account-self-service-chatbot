@@ -5,6 +5,8 @@ import {
   updateRelatedPerson,
 } from "@/lib/account/services/related-people";
 
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
+
 import type {
   CreateRelatedPersonInput,
   RelatedPerson,
@@ -109,13 +111,28 @@ async function handleAddRelatedPerson(
     const input = mapAddFields(parsedAction.fields);
     const account = await addRelatedPerson(accountId, input);
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "related_person_added",
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     return {
       action: "add_related_person",
       success: true,
       reply: `${input.name} has been added as a related person.`,
       account,
       relatedPeople: account.relatedPeople,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     return actionFailure("add_related_person", error);
@@ -185,13 +202,28 @@ async function handleUpdateRelatedPerson(
       updateInput,
     );
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "related_person_updated",
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     return {
       action: "update_related_person",
       success: true,
       reply: `${matches[0].name}'s information has been updated successfully.`,
       account,
       relatedPeople: account.relatedPeople,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     return actionFailure("update_related_person", error);
@@ -247,13 +279,28 @@ async function handleRemoveRelatedPerson(
 
     const account = await removeRelatedPerson(accountId, matches[0].id);
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "related_person_removed",
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     return {
       action: "remove_related_person",
       success: true,
       reply: `${matches[0].name} has been removed from your related people.`,
       account,
       relatedPeople: account.relatedPeople,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     return actionFailure("remove_related_person", error);

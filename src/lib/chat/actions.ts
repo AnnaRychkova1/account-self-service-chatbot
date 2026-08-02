@@ -15,10 +15,6 @@ export async function executeChatAction({
   parsedAction: ParsedAction;
   requestId?: string;
 }): Promise<ChatActionResult> {
-  console.log("executeChatAction:", {
-    accountId,
-    parsedAction,
-  });
   const normalizedAccountId = accountId.trim();
 
   if (!normalizedAccountId) {

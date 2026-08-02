@@ -4,6 +4,7 @@ import {
   getTransactions,
   processMockPayment,
 } from "@/lib/account/services/payment";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 import { handlePayment } from "@/lib/chat/handlers/chat-payment";
 
 import type { AccountContext, TransactionRow } from "@/lib/account/types";
@@ -13,8 +14,15 @@ vi.mock("@/lib/account/services/payment", () => ({
   processMockPayment: vi.fn(),
 }));
 
+vi.mock("@/lib/notifications/account-change-notification", () => ({
+  sendAccountChangeNotification: vi.fn(),
+}));
+
 const mockedGetTransactions = vi.mocked(getTransactions);
 const mockedProcessMockPayment = vi.mocked(processMockPayment);
+const mockedSendAccountChangeNotification = vi.mocked(
+  sendAccountChangeNotification,
+);
 
 const transactionRows: TransactionRow[] = [
   {
@@ -125,6 +133,12 @@ describe("handlePayment", () => {
       },
       account: accountContext,
     });
+
+    mockedSendAccountChangeNotification.mockResolvedValue({
+      notificationId: "notification-1",
+      sent: true,
+      redactedRecipient: "j***@example.test",
+    });
   });
 
   describe("read_transactions", () => {
@@ -166,6 +180,7 @@ describe("handlePayment", () => {
           },
         ],
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns an empty result when no transactions exist", async () => {
@@ -186,6 +201,7 @@ describe("handlePayment", () => {
         reply: "There are no transactions on your account.",
         transactions: [],
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("does not require a request ID to read transactions", async () => {
@@ -201,6 +217,7 @@ describe("handlePayment", () => {
       expect(result.success).toBe(true);
       expect(mockedGetTransactions).toHaveBeenCalledOnce();
       expect(mockedProcessMockPayment).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when transactions cannot be loaded", async () => {
@@ -222,6 +239,7 @@ describe("handlePayment", () => {
         success: false,
         reply: "Failed to load transactions.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -242,6 +260,54 @@ describe("handlePayment", () => {
       expect(mockedProcessMockPayment).toHaveBeenCalledWith("account-123", {
         amountCents: 15_000,
         requestId: "request-123",
+      });
+
+      expect(result).toEqual({
+        action: "mock_payment",
+        success: true,
+        reply:
+          "Your payment of €150.00 has been completed using the payment details on file.",
+        account: accountContext,
+        transaction: accountContext.transactions[0],
+        transactions: accountContext.transactions,
+        notificationQueued: true,
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "mock_payment_completed",
+        accountSnapshot: accountContext,
+      });
+    });
+
+    it("keeps the payment successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handlePayment({
+        accountId: "account-123",
+        requestId: "request-123",
+        parsedAction: {
+          action: "mock_payment",
+          fields: {
+            amount: "15000",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedProcessMockPayment).toHaveBeenCalledWith("account-123", {
+        amountCents: 15_000,
+        requestId: "request-123",
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "mock_payment_completed",
+        accountSnapshot: accountContext,
       });
 
       expect(result).toEqual({
@@ -290,6 +356,8 @@ describe("handlePayment", () => {
         transactions: accountContext.transactions,
         notificationQueued: false,
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("rejects a payment without a request ID", async () => {
@@ -311,6 +379,7 @@ describe("handlePayment", () => {
         success: false,
         reply: "Payment request ID is required.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("asks for the amount when it is missing", async () => {
@@ -339,6 +408,7 @@ describe("handlePayment", () => {
           missingFields: ["amount"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("rejects a missing amount when parser fields omit it unexpectedly", async () => {
@@ -359,6 +429,7 @@ describe("handlePayment", () => {
         success: false,
         reply: "Please provide a payment amount.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it.each(["abc", "12.5", "NaN"])(
@@ -383,6 +454,7 @@ describe("handlePayment", () => {
           success: false,
           reply: "Please provide a valid payment amount.",
         });
+        expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
       },
     );
 
@@ -413,6 +485,7 @@ describe("handlePayment", () => {
         success: false,
         reply: "Please provide a valid payment amount.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("passes a negative amount to deterministic service validation", async () => {
@@ -442,6 +515,8 @@ describe("handlePayment", () => {
         success: false,
         reply: "Please provide a valid payment amount.",
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns an over-balance validation error from the payment service", async () => {
@@ -469,6 +544,8 @@ describe("handlePayment", () => {
         reply:
           "Failed to process mocked payment: Payment amount cannot exceed the current balance.",
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns a reused request ID error from the payment service", async () => {
@@ -496,6 +573,8 @@ describe("handlePayment", () => {
         reply:
           "Failed to process mocked payment: Payment request ID has already been used with a different amount.",
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when payment processing fails", async () => {
@@ -520,6 +599,8 @@ describe("handlePayment", () => {
         success: false,
         reply: "Failed to process mocked payment.",
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -542,5 +623,6 @@ describe("handlePayment", () => {
 
     expect(mockedGetTransactions).not.toHaveBeenCalled();
     expect(mockedProcessMockPayment).not.toHaveBeenCalled();
+    expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
   });
 });

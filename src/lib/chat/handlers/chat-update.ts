@@ -1,12 +1,8 @@
 import { updateAccountHolder } from "@/lib/account/services/account-update";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import type { UpdateAccountHolderInput } from "@/lib/account/types";
-import type { ChatActionResult, ParsedAction } from "../types";
-
-type NotificationInput = {
-  accountId: string;
-  changedFields: string[];
-};
+import type { ChatActionResult, ParsedAction } from "@/lib/chat/types";
 
 export async function handleUpdateAccountHolder({
   accountId,
@@ -43,10 +39,22 @@ export async function handleUpdateAccountHolder({
 
     const account = await updateAccountHolder(accountId, updateInput);
 
-    const notificationQueued = await queueAccountChangeNotification({
-      accountId,
-      changedFields: getChangedFields(updateInput),
-    });
+    const changedFields = getChangedFields(updateInput);
+
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: `account_holder_updated:${changedFields.join(",")}`,
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
 
     return {
       action,
@@ -244,12 +252,4 @@ function getChangedFields(updateInput: UpdateAccountHolderInput): string[] {
   }
 
   return changedFields;
-}
-
-async function queueAccountChangeNotification(
-  input: NotificationInput,
-): Promise<boolean> {
-  void input;
-
-  return false;
 }

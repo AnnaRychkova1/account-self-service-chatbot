@@ -3,6 +3,8 @@ import {
   processMockPayment,
 } from "@/lib/account/services/payment";
 
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
+
 import type { Transaction, TransactionRow } from "@/lib/account/types";
 
 import type {
@@ -121,6 +123,21 @@ async function handleMockPayment(
       };
     }
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "mock_payment_completed",
+        accountSnapshot: result.account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     return {
       action: "mock_payment",
       success: true,
@@ -131,7 +148,7 @@ async function handleMockPayment(
       account: result.account,
       transaction,
       transactions: result.account.transactions,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     return actionFailure("mock_payment", error);

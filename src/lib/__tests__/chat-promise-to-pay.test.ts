@@ -5,6 +5,7 @@ import {
   getPromisesToPay,
 } from "@/lib/account/services/promise-to-pay";
 import { handlePromiseToPay } from "@/lib/chat/handlers/chat-promise-to-pay";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import type { AccountContext, PromiseToPayRow } from "@/lib/account/types";
 
@@ -13,8 +14,15 @@ vi.mock("@/lib/account/services/promise-to-pay", () => ({
   getPromisesToPay: vi.fn(),
 }));
 
+vi.mock("@/lib/notifications/account-change-notification", () => ({
+  sendAccountChangeNotification: vi.fn(),
+}));
+
 const mockedCreatePromiseToPay = vi.mocked(createPromiseToPay);
 const mockedGetPromisesToPay = vi.mocked(getPromisesToPay);
+const mockedSendAccountChangeNotification = vi.mocked(
+  sendAccountChangeNotification,
+);
 
 const promiseRows: PromiseToPayRow[] = [
   {
@@ -103,6 +111,11 @@ describe("handlePromiseToPay", () => {
 
     mockedGetPromisesToPay.mockResolvedValue(promiseRows);
     mockedCreatePromiseToPay.mockResolvedValue(accountContext);
+    mockedSendAccountChangeNotification.mockResolvedValue({
+      notificationId: "notification-1",
+      sent: true,
+      redactedRecipient: "j***@example.test",
+    });
   });
 
   describe("read_promises_to_pay", () => {
@@ -117,6 +130,7 @@ describe("handlePromiseToPay", () => {
       });
 
       expect(mockedGetPromisesToPay).toHaveBeenCalledWith("account-123");
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "read_promises_to_pay",
@@ -162,6 +176,7 @@ describe("handlePromiseToPay", () => {
         reply: "There are no promises to pay on your account.",
         promisesToPay: [],
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when promises cannot be loaded", async () => {
@@ -183,6 +198,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Failed to load promises to pay.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -203,6 +219,51 @@ describe("handlePromiseToPay", () => {
       expect(mockedCreatePromiseToPay).toHaveBeenCalledWith("account-123", {
         amountCents: 50_000,
         dueDate: "2026-09-01",
+      });
+
+      expect(result).toEqual({
+        action: "create_promise_to_pay",
+        success: true,
+        reply: "Your promise to pay €500.00 on 2026-09-01 has been recorded.",
+        account: accountContext,
+        promiseToPay: accountContext.promisesToPay[0],
+        notificationQueued: true,
+      });
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "promise_to_pay_created",
+        accountSnapshot: accountContext,
+      });
+    });
+
+    it("keeps the promise successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handlePromiseToPay({
+        accountId: "account-123",
+        parsedAction: {
+          action: "create_promise_to_pay",
+          fields: {
+            amount: "50000",
+            dueDate: "2026-09-01",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedCreatePromiseToPay).toHaveBeenCalledWith("account-123", {
+        amountCents: 50_000,
+        dueDate: "2026-09-01",
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "promise_to_pay_created",
+        accountSnapshot: accountContext,
       });
 
       expect(result).toEqual({
@@ -244,6 +305,7 @@ describe("handlePromiseToPay", () => {
           missingFields: ["amount"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("asks for the due date when it is missing", async () => {
@@ -275,6 +337,7 @@ describe("handlePromiseToPay", () => {
           missingFields: ["dueDate"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("asks for amount and due date together when both are missing", async () => {
@@ -303,6 +366,7 @@ describe("handlePromiseToPay", () => {
           missingFields: ["amount", "dueDate"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("asks for the due date when parser fields omit it unexpectedly", async () => {
@@ -332,6 +396,7 @@ describe("handlePromiseToPay", () => {
           missingFields: ["dueDate"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("rejects a missing amount when parser fields omit it unexpectedly", async () => {
@@ -353,6 +418,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Please provide a payment amount.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it.each(["abc", "12.5", "", "NaN"])(
@@ -371,6 +437,7 @@ describe("handlePromiseToPay", () => {
         });
 
         expect(mockedCreatePromiseToPay).not.toHaveBeenCalled();
+        expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
         expect(result.success).toBe(false);
       },
@@ -403,6 +470,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Please provide a valid payment amount.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("passes negative amount to the deterministic service validation", async () => {
@@ -432,6 +500,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Please provide a valid payment amount.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns a past-date validation error from the service", async () => {
@@ -456,6 +525,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Promise-to-pay due date must be in the future.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when creating the promise fails", async () => {
@@ -480,6 +550,7 @@ describe("handlePromiseToPay", () => {
         success: false,
         reply: "Failed to create promise to pay.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -501,5 +572,6 @@ describe("handlePromiseToPay", () => {
 
     expect(mockedGetPromisesToPay).not.toHaveBeenCalled();
     expect(mockedCreatePromiseToPay).not.toHaveBeenCalled();
+    expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
   });
 });

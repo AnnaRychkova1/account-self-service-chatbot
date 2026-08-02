@@ -3,6 +3,8 @@ import {
   getCallAppointments,
 } from "@/lib/account/services/call-appointment";
 
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
+
 import type { CallAppointment, CallAppointmentRow } from "@/lib/account/types";
 
 import type {
@@ -100,6 +102,21 @@ async function handleBookCallAppointment(
       reason: parsedAction.fields.reason,
     });
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "call_appointment_booked",
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     const callAppointment = account.callAppointments.find(
       (appointment) =>
         appointment.scheduledAt === new Date(scheduledAt).toISOString(),
@@ -118,7 +135,7 @@ async function handleBookCallAppointment(
       )} on ${phone}.`,
       account,
       callAppointment,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     const message =

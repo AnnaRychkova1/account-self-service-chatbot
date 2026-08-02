@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import {
   createCallAppointment,
@@ -11,6 +12,10 @@ import type { AccountContext, CallAppointmentRow } from "@/lib/account/types";
 vi.mock("@/lib/account/services/call-appointment", () => ({
   createCallAppointment: vi.fn(),
   getCallAppointments: vi.fn(),
+}));
+
+vi.mock("@/lib/notifications/account-change-notification", () => ({
+  sendAccountChangeNotification: vi.fn(),
 }));
 
 const mockedCreateCallAppointment = vi.mocked(createCallAppointment);
@@ -98,12 +103,21 @@ const accountContext: AccountContext = {
   },
 };
 
+const mockedSendAccountChangeNotification = vi.mocked(
+  sendAccountChangeNotification,
+);
+
 describe("handleCallAppointment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockedGetCallAppointments.mockResolvedValue(appointmentRows);
     mockedCreateCallAppointment.mockResolvedValue(accountContext);
+    mockedSendAccountChangeNotification.mockResolvedValue({
+      notificationId: "notification-1",
+      sent: true,
+      redactedRecipient: "j***@example.test",
+    });
   });
 
   describe("read_call_appointments", () => {
@@ -141,6 +155,7 @@ describe("handleCallAppointment", () => {
           },
         ],
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns an empty result when no appointments exist", async () => {
@@ -161,6 +176,7 @@ describe("handleCallAppointment", () => {
         reply: "There are no call appointments on your account.",
         callAppointments: [],
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when appointments cannot be loaded", async () => {
@@ -182,6 +198,7 @@ describe("handleCallAppointment", () => {
         success: false,
         reply: "Failed to load call appointments.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -203,6 +220,54 @@ describe("handleCallAppointment", () => {
         scheduledAt: "2026-08-04T09:00:00.000Z",
         phone: undefined,
         reason: "my bill",
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "call_appointment_booked",
+        accountSnapshot: accountContext,
+      });
+
+      expect(result).toEqual({
+        action: "book_call_appointment",
+        success: true,
+        reply:
+          "Your call has been booked for 4 Aug 2026, 10:00 on +353831234567.",
+        account: accountContext,
+        callAppointment: accountContext.callAppointments[0],
+        notificationQueued: true,
+      });
+    });
+
+    it("keeps the booking successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handleCallAppointment({
+        accountId: "account-123",
+        parsedAction: {
+          action: "book_call_appointment",
+          fields: {
+            scheduledAt: "2026-08-04T09:00:00.000Z",
+            reason: "my bill",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedCreateCallAppointment).toHaveBeenCalledWith("account-123", {
+        scheduledAt: "2026-08-04T09:00:00.000Z",
+        phone: undefined,
+        reason: "my bill",
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "call_appointment_booked",
+        accountSnapshot: accountContext,
       });
 
       expect(result).toEqual({
@@ -254,6 +319,13 @@ describe("handleCallAppointment", () => {
       expect(result.reply).toBe(
         "Your call has been booked for 4 Aug 2026, 10:00 on +353851112233.",
       );
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "call_appointment_booked",
+        accountSnapshot: customAccountContext,
+      });
     });
 
     it("asks for a future date and time when scheduledAt is missing", async () => {
@@ -281,6 +353,8 @@ describe("handleCallAppointment", () => {
           missingFields: ["scheduledAt"],
         },
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("asks for scheduledAt when parser omits it unexpectedly", async () => {
@@ -310,6 +384,8 @@ describe("handleCallAppointment", () => {
           missingFields: ["scheduledAt"],
         },
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("rejects a past appointment and preserves the other fields", async () => {
@@ -347,6 +423,7 @@ describe("handleCallAppointment", () => {
           missingFields: ["scheduledAt"],
         },
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns an invalid phone validation error", async () => {
@@ -371,6 +448,8 @@ describe("handleCallAppointment", () => {
         success: false,
         reply: "Please provide a valid phone number.",
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
 
     it("returns the service error when appointment creation fails", async () => {
@@ -394,6 +473,7 @@ describe("handleCallAppointment", () => {
         success: false,
         reply: "Failed to create call appointment.",
       });
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
     });
   });
 
@@ -415,5 +495,6 @@ describe("handleCallAppointment", () => {
 
     expect(mockedGetCallAppointments).not.toHaveBeenCalled();
     expect(mockedCreateCallAppointment).not.toHaveBeenCalled();
+    expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
   });
 });

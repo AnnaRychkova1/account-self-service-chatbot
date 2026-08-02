@@ -107,7 +107,6 @@ ${RETRY_OUTPUT_REQUIREMENT}`;
     );
   }
 
-  console.log("Parsed action:", parsed);
   return {
     action: parsed.action,
     fields: parsed.fields,

@@ -1,7 +1,7 @@
 import { getAccount } from "@/lib/account/services/account-get";
 
 import type { AccountContext } from "@/lib/account/types";
-import type { ChatActionResult, ParsedAction } from "../types";
+import type { ChatActionResult, ParsedAction } from "@/lib/chat/types";
 
 export async function handleReadAccountHolder({
   accountId,

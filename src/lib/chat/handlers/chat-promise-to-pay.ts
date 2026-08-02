@@ -2,6 +2,7 @@ import {
   createPromiseToPay,
   getPromisesToPay,
 } from "@/lib/account/services/promise-to-pay";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import type { PromiseToPay, PromiseToPayRow } from "@/lib/account/types";
 
@@ -99,6 +100,21 @@ async function handleCreatePromiseToPay(
       dueDate,
     });
 
+    let notificationQueued = false;
+
+    try {
+      await sendAccountChangeNotification({
+        accountId,
+        changedBy: "account_holder",
+        changeSummary: "promise_to_pay_created",
+        accountSnapshot: account,
+      });
+
+      notificationQueued = true;
+    } catch (error) {
+      console.error("Account-change notification failed:", error);
+    }
+
     const promiseToPay = account.promisesToPay.find(
       (promise) =>
         promise.amountCents === amountCents &&
@@ -115,7 +131,7 @@ async function handleCreatePromiseToPay(
       )} on ${dueDate} has been recorded.`,
       account,
       promiseToPay,
-      notificationQueued: false,
+      notificationQueued,
     };
   } catch (error) {
     return actionFailure("create_promise_to_pay", error);

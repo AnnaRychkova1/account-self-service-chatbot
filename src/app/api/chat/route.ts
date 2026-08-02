@@ -24,16 +24,11 @@ export async function POST(request: Request) {
     }
 
     const rawParsedAction = await parseMessage(message, body.pendingAction);
-    console.log("Raw parsed action:", rawParsedAction);
 
     const parsedAction = normalizeParsedAction(
       rawParsedAction,
       body.pendingAction,
     );
-
-    console.log("Normalized action:", parsedAction);
-
-    console.log("Pending action:", body.pendingAction);
 
     const result = await executeChatAction({
       accountId,
@@ -66,8 +61,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Chat API error:", error);
-
     const isRateLimitError =
       error instanceof Error &&
       (error.message.includes("status 429") ||

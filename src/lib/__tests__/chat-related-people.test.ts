@@ -7,6 +7,7 @@ import {
   updateRelatedPerson,
 } from "@/lib/account/services/related-people";
 import { handleRelatedPeople } from "@/lib/chat/handlers/chat-related-people";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import type { AccountContext, RelatedPersonRow } from "@/lib/account/types";
 
@@ -17,10 +18,17 @@ vi.mock("@/lib/account/services/related-people", () => ({
   updateRelatedPerson: vi.fn(),
 }));
 
+vi.mock("@/lib/notifications/account-change-notification", () => ({
+  sendAccountChangeNotification: vi.fn(),
+}));
+
 const mockedAddRelatedPerson = vi.mocked(addRelatedPerson);
 const mockedGetRelatedPeople = vi.mocked(getRelatedPeople);
 const mockedRemoveRelatedPerson = vi.mocked(removeRelatedPerson);
 const mockedUpdateRelatedPerson = vi.mocked(updateRelatedPerson);
+const mockedSendAccountChangeNotification = vi.mocked(
+  sendAccountChangeNotification,
+);
 
 const relatedPersonRows: RelatedPersonRow[] = [
   {
@@ -115,6 +123,11 @@ describe("handleRelatedPeople", () => {
     mockedAddRelatedPerson.mockResolvedValue(accountContext);
     mockedUpdateRelatedPerson.mockResolvedValue(accountContext);
     mockedRemoveRelatedPerson.mockResolvedValue(accountContext);
+    mockedSendAccountChangeNotification.mockResolvedValue({
+      notificationId: "notification-1",
+      sent: true,
+      redactedRecipient: "j***@example.test",
+    });
   });
 
   describe("read_related_people", () => {
@@ -196,6 +209,19 @@ describe("handleRelatedPeople", () => {
         reply: "Failed to load related people.",
       });
     });
+
+    it("does not send a notification when reading related people", async () => {
+      await handleRelatedPeople({
+        accountId: "account-123",
+        parsedAction: {
+          action: "read_related_people",
+          fields: {},
+          missingFields: [],
+        },
+      });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
+    });
   });
 
   describe("add_related_person", () => {
@@ -221,6 +247,58 @@ describe("handleRelatedPeople", () => {
         phone: "+353831998877",
         relationship: "brother",
         authorizedToAct: true,
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_added",
+        accountSnapshot: accountContext,
+      });
+
+      expect(result).toEqual({
+        action: "add_related_person",
+        success: true,
+        reply: "Mark Murphy has been added as a related person.",
+        account: accountContext,
+        relatedPeople: accountContext.relatedPeople,
+        notificationQueued: true,
+      });
+    });
+
+    it("keeps add successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handleRelatedPeople({
+        accountId: "account-123",
+        parsedAction: {
+          action: "add_related_person",
+          fields: {
+            name: "Mark Murphy",
+            email: "mark@example.test",
+            phone: "+353831998877",
+            relationship: "brother",
+            authorizedToAct: "true",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedAddRelatedPerson).toHaveBeenCalledWith("account-123", {
+        name: "Mark Murphy",
+        email: "mark@example.test",
+        phone: "+353831998877",
+        relationship: "brother",
+        authorizedToAct: true,
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_added",
+        accountSnapshot: accountContext,
       });
 
       expect(result).toEqual({
@@ -404,6 +482,55 @@ describe("handleRelatedPeople", () => {
           phone: "+353831112233",
         },
       );
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_updated",
+        accountSnapshot: accountContext,
+      });
+
+      expect(result).toEqual({
+        action: "update_related_person",
+        success: true,
+        reply: "Mark Murphy's information has been updated successfully.",
+        account: accountContext,
+        relatedPeople: accountContext.relatedPeople,
+        notificationQueued: true,
+      });
+    });
+
+    it("keeps update successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handleRelatedPeople({
+        accountId: "account-123",
+        parsedAction: {
+          action: "update_related_person",
+          fields: {
+            personName: "Mark",
+            phone: "+353831112233",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedUpdateRelatedPerson).toHaveBeenCalledWith(
+        "account-123",
+        "person-1",
+        {
+          phone: "+353831112233",
+        },
+      );
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_updated",
+        accountSnapshot: accountContext,
+      });
 
       expect(result).toEqual({
         action: "update_related_person",
@@ -688,6 +815,51 @@ describe("handleRelatedPeople", () => {
         "person-1",
       );
 
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_removed",
+        accountSnapshot: accountContext,
+      });
+
+      expect(result).toEqual({
+        action: "remove_related_person",
+        success: true,
+        reply: "Mark Murphy has been removed from your related people.",
+        account: accountContext,
+        relatedPeople: accountContext.relatedPeople,
+        notificationQueued: true,
+      });
+    });
+
+    it("keeps removal successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handleRelatedPeople({
+        accountId: "account-123",
+        parsedAction: {
+          action: "remove_related_person",
+          fields: {
+            personName: "Mark",
+          },
+          missingFields: [],
+        },
+      });
+
+      expect(mockedRemoveRelatedPerson).toHaveBeenCalledWith(
+        "account-123",
+        "person-1",
+      );
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "related_person_removed",
+        accountSnapshot: accountContext,
+      });
+
       expect(result).toEqual({
         action: "remove_related_person",
         success: true,
@@ -831,5 +1003,6 @@ describe("handleRelatedPeople", () => {
     expect(mockedAddRelatedPerson).not.toHaveBeenCalled();
     expect(mockedUpdateRelatedPerson).not.toHaveBeenCalled();
     expect(mockedRemoveRelatedPerson).not.toHaveBeenCalled();
+    expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
   });
 });

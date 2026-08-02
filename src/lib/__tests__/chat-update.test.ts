@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { updateAccountHolder } from "@/lib/account/services/account-update";
 import { handleUpdateAccountHolder } from "@/lib/chat/handlers/chat-update";
+import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
 import type {
   AccountContext,
@@ -13,7 +14,15 @@ vi.mock("@/lib/account/services/account-update", () => ({
   updateAccountHolder: vi.fn(),
 }));
 
+vi.mock("@/lib/notifications/account-change-notification", () => ({
+  sendAccountChangeNotification: vi.fn(),
+}));
+
 const mockedUpdateAccountHolder = vi.mocked(updateAccountHolder);
+
+const mockedSendAccountChangeNotification = vi.mocked(
+  sendAccountChangeNotification,
+);
 
 const updatedAccountContext: AccountContext = {
   account: {
@@ -88,6 +97,12 @@ describe("handleUpdateAccountHolder", () => {
     vi.clearAllMocks();
 
     mockedUpdateAccountHolder.mockResolvedValue(updatedAccountContext);
+
+    mockedSendAccountChangeNotification.mockResolvedValue({
+      notificationId: "notification-1",
+      sent: true,
+      redactedRecipient: "a***@example.com",
+    });
   });
 
   describe("account-holder field updates", () => {
@@ -95,6 +110,7 @@ describe("handleUpdateAccountHolder", () => {
       description: string;
       fields: Record<string, string>;
       expectedUpdate: UpdateAccountHolderInput;
+      changedField: string;
     }>([
       {
         description: "first name",
@@ -104,6 +120,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedUpdate: {
           accountHolderFirstName: "Maria",
         },
+        changedField: "firstName",
       },
       {
         description: "last name",
@@ -113,6 +130,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedUpdate: {
           accountHolderLastName: "Smith",
         },
+        changedField: "lastName",
       },
       {
         description: "email address",
@@ -122,6 +140,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedUpdate: {
           email: "maria@example.com",
         },
+        changedField: "email",
       },
       {
         description: "phone number",
@@ -131,30 +150,41 @@ describe("handleUpdateAccountHolder", () => {
         expectedUpdate: {
           phone: "+353851112222",
         },
+        changedField: "phone",
       },
-    ])("updates the $description", async ({ fields, expectedUpdate }) => {
-      const result = await handleUpdateAccountHolder({
-        accountId: "account-123",
-        parsedAction: createParsedAction({
-          fields,
-        }),
-      });
+    ])(
+      "updates the $description",
+      async ({ fields, expectedUpdate, changedField }) => {
+        const result = await handleUpdateAccountHolder({
+          accountId: "account-123",
+          parsedAction: createParsedAction({
+            fields,
+          }),
+        });
 
-      expect(mockedUpdateAccountHolder).toHaveBeenCalledOnce();
+        expect(mockedUpdateAccountHolder).toHaveBeenCalledOnce();
 
-      expect(mockedUpdateAccountHolder).toHaveBeenCalledWith(
-        "account-123",
-        expectedUpdate,
-      );
+        expect(mockedUpdateAccountHolder).toHaveBeenCalledWith(
+          "account-123",
+          expectedUpdate,
+        );
 
-      expect(result).toEqual({
-        action: "update_account_holder",
-        success: true,
-        reply: "Your account information has been updated successfully.",
-        account: updatedAccountContext,
-        notificationQueued: false,
-      });
-    });
+        expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+          accountId: "account-123",
+          changedBy: "account_holder",
+          changeSummary: `account_holder_updated:${changedField}`,
+          accountSnapshot: updatedAccountContext,
+        });
+
+        expect(result).toEqual({
+          action: "update_account_holder",
+          success: true,
+          reply: "Your account information has been updated successfully.",
+          account: updatedAccountContext,
+          notificationQueued: true,
+        });
+      },
+    );
 
     it("updates multiple account-holder fields in one request", async () => {
       const result = await handleUpdateAccountHolder({
@@ -176,12 +206,19 @@ describe("handleUpdateAccountHolder", () => {
         phone: "+353851112222",
       });
 
-      expect(result).toMatchObject({
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "account_holder_updated:firstName,lastName,email,phone",
+        accountSnapshot: updatedAccountContext,
+      });
+
+      expect(result).toEqual({
         action: "update_account_holder",
         success: true,
         reply: "Your account information has been updated successfully.",
         account: updatedAccountContext,
-        notificationQueued: false,
+        notificationQueued: true,
       });
     });
   });
@@ -191,6 +228,7 @@ describe("handleUpdateAccountHolder", () => {
       description: string;
       fields: Record<string, string>;
       expectedAddress: UpdateAccountHolderInput["address"];
+      changedField: string;
     }>([
       {
         description: "first address line",
@@ -200,6 +238,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedAddress: {
           line1: "20 High Street",
         },
+        changedField: "addressLine1",
       },
       {
         description: "second address line",
@@ -209,6 +248,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedAddress: {
           line2: "Flat 4",
         },
+        changedField: "addressLine2",
       },
       {
         description: "city",
@@ -218,6 +258,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedAddress: {
           city: "Cork",
         },
+        changedField: "city",
       },
       {
         description: "postal code",
@@ -227,6 +268,7 @@ describe("handleUpdateAccountHolder", () => {
         expectedAddress: {
           postalCode: "T12TEST",
         },
+        changedField: "postalCode",
       },
       {
         description: "country",
@@ -236,10 +278,11 @@ describe("handleUpdateAccountHolder", () => {
         expectedAddress: {
           country: "Ireland",
         },
+        changedField: "country",
       },
     ])(
       "supports a partial update of the $description",
-      async ({ fields, expectedAddress }) => {
+      async ({ fields, expectedAddress, changedField }) => {
         const result = await handleUpdateAccountHolder({
           accountId: "account-123",
           parsedAction: createParsedAction({
@@ -251,10 +294,17 @@ describe("handleUpdateAccountHolder", () => {
           address: expectedAddress,
         });
 
+        expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+          accountId: "account-123",
+          changedBy: "account_holder",
+          changeSummary: `account_holder_updated:${changedField}`,
+          accountSnapshot: updatedAccountContext,
+        });
+
         expect(result).toMatchObject({
           action: "update_account_holder",
           success: true,
-          notificationQueued: false,
+          notificationQueued: true,
         });
       },
     );
@@ -283,12 +333,20 @@ describe("handleUpdateAccountHolder", () => {
         },
       });
 
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary:
+          "account_holder_updated:addressLine1,addressLine2,city,postalCode,country",
+        accountSnapshot: updatedAccountContext,
+      });
+
       expect(result).toEqual({
         action: "update_account_holder",
         success: true,
         reply: "Your account information has been updated successfully.",
         account: updatedAccountContext,
-        notificationQueued: false,
+        notificationQueued: true,
       });
     });
 
@@ -313,6 +371,13 @@ describe("handleUpdateAccountHolder", () => {
           postalCode: "D01TEST",
         },
       });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "account_holder_updated:email,phone,city,postalCode",
+        accountSnapshot: updatedAccountContext,
+      });
     });
   });
 
@@ -334,12 +399,19 @@ describe("handleUpdateAccountHolder", () => {
           preferredContactMethod,
         });
 
+        expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+          accountId: "account-123",
+          changedBy: "account_holder",
+          changeSummary: "account_holder_updated:preferredContactMethod",
+          accountSnapshot: updatedAccountContext,
+        });
+
         expect(result).toEqual({
           action: "update_preferred_contact_method",
           success: true,
           reply: `Your preferred contact method has been updated to ${preferredContactMethod}.`,
           account: updatedAccountContext,
-          notificationQueued: false,
+          notificationQueued: true,
         });
       },
     );
@@ -359,10 +431,18 @@ describe("handleUpdateAccountHolder", () => {
         preferredContactMethod: "sms",
       });
 
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "account_holder_updated:preferredContactMethod",
+        accountSnapshot: updatedAccountContext,
+      });
+
       expect(result).toMatchObject({
         action: "update_preferred_contact_method",
         success: true,
         reply: "Your preferred contact method has been updated to sms.",
+        notificationQueued: true,
       });
     });
 
@@ -381,10 +461,18 @@ describe("handleUpdateAccountHolder", () => {
         preferredContactMethod: "phone",
       });
 
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "account_holder_updated:preferredContactMethod",
+        accountSnapshot: updatedAccountContext,
+      });
+
       expect(result).toMatchObject({
         action: "update_account_holder",
         success: true,
         reply: "Your account information has been updated successfully.",
+        notificationQueued: true,
       });
     });
 
@@ -400,6 +488,7 @@ describe("handleUpdateAccountHolder", () => {
       });
 
       expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_preferred_contact_method",
@@ -467,6 +556,7 @@ describe("handleUpdateAccountHolder", () => {
         });
 
         expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+        expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
         expect(result).toEqual({
           action: "update_account_holder",
@@ -485,6 +575,7 @@ describe("handleUpdateAccountHolder", () => {
       });
 
       expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_account_holder",
@@ -503,6 +594,7 @@ describe("handleUpdateAccountHolder", () => {
       });
 
       expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_preferred_contact_method",
@@ -520,6 +612,7 @@ describe("handleUpdateAccountHolder", () => {
       });
 
       expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_account_holder",
@@ -538,11 +631,48 @@ describe("handleUpdateAccountHolder", () => {
       });
 
       expect(mockedUpdateAccountHolder).not.toHaveBeenCalled();
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_preferred_contact_method",
         success: false,
         reply: "Which contact method would you prefer: email, SMS, or phone?",
+      });
+    });
+  });
+
+  describe("notification errors", () => {
+    it("keeps the account update successful when notification delivery fails", async () => {
+      mockedSendAccountChangeNotification.mockRejectedValueOnce(
+        new Error("Notification failed."),
+      );
+
+      const result = await handleUpdateAccountHolder({
+        accountId: "account-123",
+        parsedAction: createParsedAction({
+          fields: {
+            phone: "+353851112222",
+          },
+        }),
+      });
+
+      expect(mockedUpdateAccountHolder).toHaveBeenCalledWith("account-123", {
+        phone: "+353851112222",
+      });
+
+      expect(mockedSendAccountChangeNotification).toHaveBeenCalledWith({
+        accountId: "account-123",
+        changedBy: "account_holder",
+        changeSummary: "account_holder_updated:phone",
+        accountSnapshot: updatedAccountContext,
+      });
+
+      expect(result).toEqual({
+        action: "update_account_holder",
+        success: true,
+        reply: "Your account information has been updated successfully.",
+        account: updatedAccountContext,
+        notificationQueued: false,
       });
     });
   });
@@ -569,6 +699,8 @@ describe("handleUpdateAccountHolder", () => {
         },
       );
 
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
+
       expect(result).toEqual({
         action: "update_account_holder",
         success: false,
@@ -589,6 +721,8 @@ describe("handleUpdateAccountHolder", () => {
           },
         }),
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_account_holder",
@@ -611,6 +745,8 @@ describe("handleUpdateAccountHolder", () => {
           },
         }),
       });
+
+      expect(mockedSendAccountChangeNotification).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         action: "update_preferred_contact_method",
