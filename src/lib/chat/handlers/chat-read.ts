@@ -47,6 +47,10 @@ function getAccountFieldReply(
 
   const account = accountContext.account;
 
+  if (!requestedField) {
+    return getAccountSummaryReply(accountContext);
+  }
+
   switch (requestedField) {
     case "firstName":
       return `The first name on your account is ${account.accountHolderFirstName}.`;
@@ -86,9 +90,41 @@ function getAccountFieldReply(
 
     case "preferredContactMethod":
       return getPreferredContactMethodReply(accountContext);
+    case "balance":
+      return `Your current account balance is ${formatCurrency(
+        account.balanceCents,
+        account.currency,
+      )}.`;
+
+    case "reference":
+      return `Your account reference is ${account.reference}.`;
+
+    case "creditorName":
+      return `Your creditor is ${account.creditorName}.`;
+
+    case "status":
+      return `Your account status is ${account.status}.`;
+
+    case "daysPastDue":
+      return `Your account is ${account.daysPastDue} days past due.`;
+
+    case "billingDueDate":
+      return `Your billing due date is ${accountContext.billing.dueDate}.`;
+
+    case "supportPhone":
+      return `The support phone number is ${accountContext.support.supportPhone}.`;
+
+    case "supportEmail":
+      return `The support email address is ${accountContext.support.supportEmail}.`;
+
+    case "lastPayment":
+      return `Your last payment was ${formatCurrency(
+        account.lastPaymentAmountCents,
+        account.currency,
+      )} on ${account.lastPaymentDate}.`;
 
     default:
-      return "Which account detail would you like to view? You can ask for your name, email, phone number, address, or preferred contact method.";
+      return "I could not identify which account detail you want to view.";
   }
 }
 
@@ -116,4 +152,29 @@ function formatAddress(accountContext: AccountContext): string {
 
 function formatContactMethod(method: string): string {
   return method === "sms" ? "SMS" : method;
+}
+
+function getAccountSummaryReply(accountContext: AccountContext): string {
+  const account = accountContext.account;
+
+  return [
+    `Name: ${account.accountHolderFirstName} ${account.accountHolderLastName}`,
+    `Email: ${account.email}`,
+    `Phone: ${account.phone}`,
+    `Address: ${formatAddress(accountContext)}`,
+    `Preferred contact method: ${formatContactMethod(
+      account.preferredContactMethod,
+    )}`,
+    `Current balance: ${formatCurrency(
+      account.balanceCents,
+      account.currency,
+    )}`,
+  ].join("\n");
+}
+
+function formatCurrency(amountCents: number, currency: string): string {
+  return new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency,
+  }).format(amountCents / 100);
 }

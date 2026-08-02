@@ -321,7 +321,52 @@ describe("handleReadAccountHolder", () => {
     expect(result.reply).toBe("The country on your account is Ireland.");
   });
 
-  it("asks which detail should be displayed when the field is missing", async () => {
+  it("reads the current account balance", async () => {
+    const result = await handleReadAccountHolder({
+      accountId: "account-123",
+      parsedAction: {
+        action: "read_account",
+        fields: {
+          requestedField: "balance",
+        },
+        missingFields: [],
+      },
+    });
+
+    expect(result.reply).toBe("Your current account balance is €100.00.");
+  });
+
+  it("reads the account reference", async () => {
+    const result = await handleReadAccountHolder({
+      accountId: "account-123",
+      parsedAction: {
+        action: "read_account",
+        fields: {
+          requestedField: "reference",
+        },
+        missingFields: [],
+      },
+    });
+
+    expect(result.reply).toBe("Your account reference is REF-123.");
+  });
+
+  it("reads the last payment", async () => {
+    const result = await handleReadAccountHolder({
+      accountId: "account-123",
+      parsedAction: {
+        action: "read_account",
+        fields: {
+          requestedField: "lastPayment",
+        },
+        missingFields: [],
+      },
+    });
+
+    expect(result.reply).toBe("Your last payment was €20.00 on 2026-07-01.");
+  });
+
+  it("returns an account summary when no specific field is requested", async () => {
     const result = await handleReadAccountHolder({
       accountId: "account-123",
       parsedAction: {
@@ -336,8 +381,15 @@ describe("handleReadAccountHolder", () => {
       success: true,
     });
 
-    expect(result.reply).toContain(
-      "Which account detail would you like to view?",
+    expect(result.reply).toBe(
+      [
+        "Name: Anna Rychkova",
+        "Email: anna@example.com",
+        "Phone: +353851234567",
+        "Address: 1 Main Street, Apartment 2, Carlow, R93TEST, Ireland",
+        "Preferred contact method: email",
+        "Current balance: €100.00",
+      ].join("\n"),
     );
   });
 

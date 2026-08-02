@@ -214,7 +214,20 @@ The application follows a layered architecture that separates message parsing, b
 
 ---
 
-## 10. Implement account-change notifications
+## 10. Add account summary response
+
+**Commit**
+
+`feat: add account summary response`
+
+- Return a complete account summary when no specific account field is requested.
+- Include account-holder name, email, phone, address, preferred contact method, and current balance.
+- Preserve field-specific account queries.
+- Add tests for the account summary response.
+
+---
+
+## 11. Implement account-change notifications
 
 **Commit**
 
@@ -228,7 +241,7 @@ The application follows a layered architecture that separates message parsing, b
 
 ---
 
-## 11. Complete acceptance tests
+## 12. Complete acceptance tests
 
 **Commit**
 
@@ -241,7 +254,7 @@ The application follows a layered architecture that separates message parsing, b
 
 ---
 
-## 12. Finalize documentation and deployment
+## 13. Finalize documentation and deployment
 
 **Commit**
 
