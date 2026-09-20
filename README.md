@@ -17,6 +17,17 @@ Key areas include:
 
 https://account-self-service-chatbot-two.vercel.app/
 
+## Demo Access
+
+Use the following demo account to explore the application:
+
+- Email: `demo@example.com`
+- Password: `Demo12345!`
+
+This account contains seeded test data for exploring the self-service workflows.
+
+The demo account is isolated from other accounts through Supabase Row Level Security.
+
 ## Features
 
 ### Account details
