@@ -63,6 +63,7 @@ The demo account is isolated from other accounts through Supabase Row Level Secu
 ### Notifications
 
 After successful account changes, the application can send a generic notification email through Resend with an encrypted PDF account summary.
+The PDF is encrypted using the last four digits of the account holder's current phone number as the password.
 
 Sensitive account details are kept out of the email body. Notification failures are recorded without storing sensitive email or PDF content.
 
