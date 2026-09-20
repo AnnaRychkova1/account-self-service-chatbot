@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import {
   assertNoDatabaseError,
   getAccount,
@@ -136,11 +136,12 @@ function buildRelatedPersonUpdate(
 
 export async function getRelatedPeople(
   accountId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<RelatedPersonRow[]> {
-  const accountHolderId = await getAccountHolderId(accountId, supabase);
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
+  const accountHolderId = await getAccountHolderId(accountId, client);
 
-  const result = await supabase
+  const result = await client
     .from("related_people")
     .select("*")
     .eq("account_holder_id", accountHolderId)
@@ -155,22 +156,20 @@ export async function getRelatedPeople(
 export async function addRelatedPerson(
   accountId: string,
   input: CreateRelatedPersonInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
 
   if (!normalizedAccountId) {
     throw new Error("Account ID is required.");
   }
 
-  const accountHolderId = await getAccountHolderId(
-    normalizedAccountId,
-    supabase,
-  );
+  const accountHolderId = await getAccountHolderId(normalizedAccountId, client);
 
   const insertData = buildRelatedPersonInsert(accountHolderId, input);
 
-  const result = await supabase
+  const result = await client
     .from("related_people")
     .insert(insertData)
     .select("id")
@@ -182,15 +181,16 @@ export async function addRelatedPerson(
     throw new Error("Failed to add related person.");
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }
 
 export async function updateRelatedPerson(
   accountId: string,
   relatedPersonId: string,
   input: UpdateRelatedPersonInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
   const normalizedRelatedPersonId = relatedPersonId.trim();
 
@@ -202,14 +202,11 @@ export async function updateRelatedPerson(
     throw new Error("Related person ID is required.");
   }
 
-  const accountHolderId = await getAccountHolderId(
-    normalizedAccountId,
-    supabase,
-  );
+  const accountHolderId = await getAccountHolderId(normalizedAccountId, client);
 
   const updateData = buildRelatedPersonUpdate(input);
 
-  const result = await supabase
+  const result = await client
     .from("related_people")
     .update(updateData)
     .eq("id", normalizedRelatedPersonId)
@@ -223,14 +220,15 @@ export async function updateRelatedPerson(
     throw new Error("Related person was not found.");
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }
 
 export async function removeRelatedPerson(
   accountId: string,
   relatedPersonId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
   const normalizedRelatedPersonId = relatedPersonId.trim();
 
@@ -242,12 +240,9 @@ export async function removeRelatedPerson(
     throw new Error("Related person ID is required.");
   }
 
-  const accountHolderId = await getAccountHolderId(
-    normalizedAccountId,
-    supabase,
-  );
+  const accountHolderId = await getAccountHolderId(normalizedAccountId, client);
 
-  const result = await supabase
+  const result = await client
     .from("related_people")
     .delete()
     .eq("id", normalizedRelatedPersonId)
@@ -261,5 +256,5 @@ export async function removeRelatedPerson(
     throw new Error("Related person was not found.");
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import {
   assertNoDatabaseError,
   getAccount,
@@ -95,11 +95,12 @@ function validateCallAppointmentInput(
 
 export async function getCallAppointments(
   accountId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<CallAppointmentRow[]> {
-  const accountHolder = await getAccountHolder(accountId, supabase);
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
+  const accountHolder = await getAccountHolder(accountId, client);
 
-  const result = await supabase
+  const result = await client
     .from("call_appointments")
     .select("*")
     .eq("account_holder_id", accountHolder.id)
@@ -116,9 +117,11 @@ export async function getCallAppointments(
 export async function createCallAppointment(
   accountId: string,
   input: CreateCallAppointmentInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
   const normalizedAccountId = accountId.trim();
+
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
 
   if (!normalizedAccountId) {
     throw new Error("Account ID is required.");
@@ -126,7 +129,7 @@ export async function createCallAppointment(
 
   const validatedInput = validateCallAppointmentInput(input);
 
-  const accountHolder = await getAccountHolder(normalizedAccountId, supabase);
+  const accountHolder = await getAccountHolder(normalizedAccountId, client);
 
   const insertData: CallAppointmentInsertRow = {
     account_holder_id: accountHolder.id,
@@ -136,7 +139,7 @@ export async function createCallAppointment(
     status: "scheduled",
   };
 
-  const result = await supabase
+  const result = await client
     .from("call_appointments")
     .insert(insertData)
     .select("id")
@@ -148,5 +151,5 @@ export async function createCallAppointment(
     throw new Error("Failed to create call appointment.");
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }

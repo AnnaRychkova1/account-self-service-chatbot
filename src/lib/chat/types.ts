@@ -71,10 +71,10 @@ export type OpenRouterResponse = {
 };
 
 export type ChatRequest = {
-  accountId: string;
+  accountId?: string;
   message: string;
   conversationId?: string;
-  pendingAction?: PendingChatAction;
+  // pendingAction?: PendingChatAction;
   requestId?: string;
 };
 

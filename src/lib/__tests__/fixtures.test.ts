@@ -13,7 +13,7 @@ const fixtures = [
 ] satisfies LegacyAccountFixture[];
 
 describe("account fixtures", () => {
-  it("can be normalized into the starter account contract", () => {
+  it("can be normalized into the account contract", () => {
     for (const fixture of fixtures) {
       const accountContext = normalizeLegacyFixture(fixture);
 

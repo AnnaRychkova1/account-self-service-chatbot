@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import {
   assertNoDatabaseError,
   getAccount,
@@ -94,11 +94,12 @@ function validatePromiseToPayInput(
 
 export async function getPromisesToPay(
   accountId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<PromiseToPayRow[]> {
-  const accountHolder = await getAccountHolder(accountId, supabase);
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
+  const accountHolder = await getAccountHolder(accountId, client);
 
-  const result = await supabase
+  const result = await client
     .from("promises_to_pay")
     .select("*")
     .eq("account_holder_id", accountHolder.id)
@@ -115,8 +116,9 @@ export async function getPromisesToPay(
 export async function createPromiseToPay(
   accountId: string,
   input: CreatePromiseToPayInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
 
   if (!normalizedAccountId) {
@@ -125,7 +127,7 @@ export async function createPromiseToPay(
 
   const validatedInput = validatePromiseToPayInput(input);
 
-  const accountHolder = await getAccountHolder(normalizedAccountId, supabase);
+  const accountHolder = await getAccountHolder(normalizedAccountId, client);
 
   const insertData: PromiseToPayInsertRow = {
     account_holder_id: accountHolder.id,
@@ -135,7 +137,7 @@ export async function createPromiseToPay(
     status: "active",
   };
 
-  const result = await supabase
+  const result = await client
     .from("promises_to_pay")
     .insert(insertData)
     .select("id")
@@ -147,5 +149,5 @@ export async function createPromiseToPay(
     throw new Error("Failed to create promise to pay.");
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }

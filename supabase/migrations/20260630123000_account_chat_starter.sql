@@ -1,5 +1,5 @@
--- Starter schema for the account self-service chatbot challenge.
--- Candidates should evolve this shape as needed and document their final model.
+-- Initial database schema for the account self-service chatbot.
+-- The final application model is extended by subsequent migrations.
 
 create extension if not exists pgcrypto;
 

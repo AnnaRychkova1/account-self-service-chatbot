@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import { generateEncryptedAccountSummaryPdf } from "@/lib/notifications/account-summary-pdf";
 import { sendAccountChangeNotification } from "@/lib/notifications/account-change-notification";
 
@@ -20,14 +20,16 @@ vi.mock("resend", () => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabaseClient: vi.fn(),
+  createAuthenticatedServerSupabaseClient: vi.fn(),
 }));
 
 vi.mock("@/lib/notifications/account-summary-pdf", () => ({
   generateEncryptedAccountSummaryPdf: vi.fn(),
 }));
 
-const mockedCreateServerSupabaseClient = vi.mocked(createServerSupabaseClient);
+const mockedCreateAuthenticatedServerSupabaseClient = vi.mocked(
+  createAuthenticatedServerSupabaseClient,
+);
 
 const mockedGenerateEncryptedAccountSummaryPdf = vi.mocked(
   generateEncryptedAccountSummaryPdf,
@@ -188,10 +190,27 @@ describe("sendAccountChangeNotification", () => {
     vi.unstubAllEnvs();
   });
 
+  it("uses the authenticated Supabase client", async () => {
+    const { supabase } = createMockSupabase();
+
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
+
+    await sendAccountChangeNotification({
+      accountId: "acc_standard_001",
+      changedBy: "account_holder",
+      changeSummary: "phone_updated",
+      accountSnapshot: accountContext,
+    });
+
+    expect(
+      mockedCreateAuthenticatedServerSupabaseClient,
+    ).toHaveBeenCalledOnce();
+  });
+
   it("sends a generic email with an encrypted PDF attachment", async () => {
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     const result = await sendAccountChangeNotification({
       accountId: "acc_standard_001",
@@ -250,7 +269,7 @@ describe("sendAccountChangeNotification", () => {
   it("records a queued notification attempt before delivery", async () => {
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await sendAccountChangeNotification({
       accountId: "acc_standard_001",
@@ -273,7 +292,7 @@ describe("sendAccountChangeNotification", () => {
   it("loads the account holder using the public account ID", async () => {
     const { supabase, accountHolderBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await sendAccountChangeNotification({
       accountId: "  acc_standard_001  ",
@@ -295,7 +314,7 @@ describe("sendAccountChangeNotification", () => {
   it("returns a redacted recipient address", async () => {
     const { supabase } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     const result = await sendAccountChangeNotification({
       accountId: "acc_standard_001",
@@ -312,7 +331,7 @@ describe("sendAccountChangeNotification", () => {
 
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     const result = await sendAccountChangeNotification({
       accountId: "acc_standard_001",
@@ -342,7 +361,7 @@ describe("sendAccountChangeNotification", () => {
   it("records a failed attempt when Resend rejects the email", async () => {
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     mockedResendSend.mockResolvedValueOnce({
       data: null,
@@ -371,7 +390,7 @@ describe("sendAccountChangeNotification", () => {
   it("records a failed attempt when PDF generation fails", async () => {
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     mockedGenerateEncryptedAccountSummaryPdf.mockRejectedValueOnce(
       new Error("PDF generation failed"),
@@ -412,7 +431,9 @@ describe("sendAccountChangeNotification", () => {
       }),
     ).rejects.toThrow("Notification recipient email is required.");
 
-    expect(mockedCreateServerSupabaseClient).not.toHaveBeenCalled();
+    expect(
+      mockedCreateAuthenticatedServerSupabaseClient,
+    ).not.toHaveBeenCalled();
 
     expect(mockedGenerateEncryptedAccountSummaryPdf).not.toHaveBeenCalled();
 
@@ -422,7 +443,7 @@ describe("sendAccountChangeNotification", () => {
   it("rejects an empty account ID", async () => {
     const { supabase } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await expect(
       sendAccountChangeNotification({
@@ -448,7 +469,7 @@ describe("sendAccountChangeNotification", () => {
       },
     });
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await expect(
       sendAccountChangeNotification({
@@ -470,7 +491,7 @@ describe("sendAccountChangeNotification", () => {
       },
     });
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await expect(
       sendAccountChangeNotification({
@@ -492,7 +513,7 @@ describe("sendAccountChangeNotification", () => {
       },
     });
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await expect(
       sendAccountChangeNotification({
@@ -516,7 +537,7 @@ describe("sendAccountChangeNotification", () => {
       },
     });
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     await expect(
       sendAccountChangeNotification({
@@ -535,7 +556,7 @@ describe("sendAccountChangeNotification", () => {
 
     const { supabase, notificationBuilder } = createMockSupabase();
 
-    mockedCreateServerSupabaseClient.mockReturnValue(supabase);
+    mockedCreateAuthenticatedServerSupabaseClient.mockResolvedValue(supabase);
 
     const result = await sendAccountChangeNotification({
       accountId: "acc_standard_001",

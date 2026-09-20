@@ -1,10 +1,12 @@
 # Account Context
 
-The fixtures in `fixtures/` are the starter account data. The migration in `supabase/migrations/` seeds the standard account into a minimal table outline. Candidates should evolve that schema as needed, and the final implementation should preserve the same business concepts.
+The application uses a structured account context to represent the account holder, account details, related people, promises to pay, transactions, and call appointments.
+
+The account context is loaded from Supabase and mapped into the application's domain model before being used by chat workflows and business services.
 
 ## Mutable Fields
 
-These fields should be readable and writable through chat:
+The following account data can be read and updated through the application:
 
 - account holder name
 - account holder email
@@ -17,9 +19,9 @@ These fields should be readable and writable through chat:
 - call appointments
 - current account balance after mocked payments
 
-## Read-Only Starter Fields
+## Read-Only Fields
 
-These fields may be treated as read-only unless the candidate documents a reason to change them:
+The following account fields are treated as read-only:
 
 - account reference
 - creditor name
@@ -29,14 +31,16 @@ These fields may be treated as read-only unless the candidate documents a reason
 - support phone and email
 - seeded historical transactions
 
-## Legacy Fixture Names
+## Legacy Fixture Fields
 
-The JSON fixtures still use `debtorFirstName` and `debtorLastName` because the original starter came from a debtor-portal challenge. Candidate-facing code should prefer `account holder` language. The starter helper in `src/lib/account/types.ts` normalizes those legacy fixture fields into `accountHolderFirstName` and `accountHolderLastName`.
+The JSON fixtures contain legacy field names such as `debtorFirstName` and `debtorLastName`.
 
-## Notification Rule
+The application maps these fields to `accountHolderFirstName` and `accountHolderLastName` in the domain model so that the application code consistently uses account holder terminology.
 
-Every fixture starts with phone number `+353831234567`. The initial encrypted PDF password is the last four digits: `4567`.
+## Notifications
 
-When persisted account data changes, the app should send a generic email and put sensitive account details in the encrypted PDF attachment.
+After a successful account data change, the application can send a generic notification email through Resend with an encrypted PDF account summary.
 
-The deployed submission should use Resend for the email and attach an encrypted PDF. Tests should mock this boundary instead of calling Resend or inspecting a real inbox.
+Sensitive account details are kept out of the email body and included only in the encrypted PDF attachment.
+
+Notification delivery is isolated behind a service boundary and mocked in automated tests.

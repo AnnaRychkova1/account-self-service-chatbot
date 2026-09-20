@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import {
   assertNoDatabaseError,
   getAccount,
@@ -123,9 +123,11 @@ function buildAccountHolderUpdate(
 export async function updateAccountHolder(
   accountId: string,
   fields: UpdateAccountHolderInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
   const normalizedAccountId = accountId.trim();
+
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
 
   if (!normalizedAccountId) {
     throw new Error("Account ID is required.");
@@ -133,7 +135,7 @@ export async function updateAccountHolder(
 
   const updateData = buildAccountHolderUpdate(fields);
 
-  const updateResult = await supabase
+  const updateResult = await client
     .from("account_holders")
     .update(updateData)
     .eq("account_id", normalizedAccountId)
@@ -146,5 +148,5 @@ export async function updateAccountHolder(
     throw new Error(`Account "${normalizedAccountId}" was not found.`);
   }
 
-  return getAccount(normalizedAccountId, supabase);
+  return getAccount(normalizedAccountId, client);
 }

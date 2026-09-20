@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import {
   assertNoDatabaseError,
   getAccount,
@@ -37,15 +37,16 @@ function validateMockPaymentInput(input: MockPaymentInput): MockPaymentInput {
 
 export async function getTransactions(
   accountId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<TransactionRow[]> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
 
   if (!normalizedAccountId) {
     throw new Error("Account ID is required.");
   }
 
-  const accountHolderResult = await supabase
+  const accountHolderResult = await client
     .from("account_holders")
     .select("id")
     .eq("account_id", normalizedAccountId)
@@ -60,7 +61,7 @@ export async function getTransactions(
     throw new Error(`Account "${normalizedAccountId}" was not found.`);
   }
 
-  const result = await supabase
+  const result = await client
     .from("transactions")
     .select("*")
     .eq("account_holder_id", accountHolderResult.data.id)
@@ -80,11 +81,12 @@ export async function getTransactions(
 export async function processMockPayment(
   accountId: string,
   input: MockPaymentInput,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<{
   payment: MockPaymentResult;
   account: AccountContext;
 }> {
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
   const normalizedAccountId = accountId.trim();
 
   if (!normalizedAccountId) {
@@ -93,7 +95,7 @@ export async function processMockPayment(
 
   const validatedInput = validateMockPaymentInput(input);
 
-  const result = await supabase.rpc("process_mock_payment", {
+  const result = await client.rpc("process_mock_payment", {
     p_account_id: normalizedAccountId,
     p_amount_cents: validatedInput.amountCents,
     p_request_id: validatedInput.requestId,
@@ -114,7 +116,7 @@ export async function processMockPayment(
     duplicate: row.duplicate,
   };
 
-  const account = await getAccount(normalizedAccountId, supabase);
+  const account = await getAccount(normalizedAccountId, client);
 
   return {
     payment,

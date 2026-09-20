@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { getCurrentAccount } from "@/lib/account/services/account-current";
 import { executeChatAction } from "@/lib/chat/actions";
 import { parseMessage } from "@/lib/chat/parser";
+import {
+  clearPendingChatAction,
+  getPendingChatAction,
+  savePendingChatAction,
+} from "@/lib/chat/services/pending-action";
 
 import type {
   ChatRequest,
@@ -13,22 +19,25 @@ import type {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Partial<ChatRequest>;
-    const accountId = body.accountId?.trim();
+
     const message = body.message?.trim();
 
-    if (!accountId || !message) {
+    if (!message) {
       return NextResponse.json(
-        { error: "accountId and message are required." },
+        { error: "Message is required." },
         { status: 400 },
       );
     }
 
-    const rawParsedAction = await parseMessage(message, body.pendingAction);
+    const accountContext = await getCurrentAccount();
+    const accountId = accountContext.account.accountId;
+    const conversationId = body.conversationId ?? "starter-conversation";
+    const pendingAction =
+      (await getPendingChatAction(accountId, conversationId)) ?? undefined;
 
-    const parsedAction = normalizeParsedAction(
-      rawParsedAction,
-      body.pendingAction,
-    );
+    const rawParsedAction = await parseMessage(message, pendingAction);
+
+    const parsedAction = normalizeParsedAction(rawParsedAction, pendingAction);
 
     const result = await executeChatAction({
       accountId,
@@ -36,7 +45,7 @@ export async function POST(request: Request) {
       requestId: body.requestId,
     });
 
-    const pendingAction =
+    const nextPendingAction =
       (result.pendingAction ?? parsedAction.missingFields.length > 0)
         ? {
             action: parsedAction.action,
@@ -44,6 +53,12 @@ export async function POST(request: Request) {
             missingFields: parsedAction.missingFields,
           }
         : null;
+
+    if (nextPendingAction) {
+      await savePendingChatAction(accountId, conversationId, nextPendingAction);
+    } else {
+      await clearPendingChatAction(accountId, conversationId);
+    }
 
     const response: ChatResponse = {
       conversationId: body.conversationId ?? "starter-conversation",
@@ -56,11 +71,12 @@ export async function POST(request: Request) {
       },
 
       result,
-      pendingAction,
+      pendingAction: nextPendingAction,
     };
 
     return NextResponse.json(response);
   } catch (error) {
+    console.error("CHAT API ERROR:", error);
     const isRateLimitError =
       error instanceof Error &&
       (error.message.includes("status 429") ||

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import { mapAccountContext } from "@/lib/account/mappers";
 
 import type {
@@ -24,18 +24,23 @@ export function assertNoDatabaseError(
 
 export async function getAccount(
   accountId: string,
-  supabase: SupabaseClient = createServerSupabaseClient(),
+  supabase?: SupabaseClient,
 ): Promise<AccountContext> {
   const normalizedAccountId = accountId.trim();
+
+  const client = supabase ?? (await createAuthenticatedServerSupabaseClient());
 
   if (!normalizedAccountId) {
     throw new Error("Account ID is required.");
   }
 
-  const accountHolderResult = await supabase
+  const accountHolderResult = await client
     .from("account_holders")
     .select("*")
     .eq("account_id", normalizedAccountId)
+    // .maybeSingle<AccountHolderRow>();
+
+    // TODO back to single
     .single<AccountHolderRow>();
 
   assertNoDatabaseError(
@@ -55,13 +60,13 @@ export async function getAccount(
     transactionsResult,
     callAppointmentsResult,
   ] = await Promise.all([
-    supabase
+    client
       .from("related_people")
       .select("*")
       .eq("account_holder_id", accountHolder.id)
       .returns<RelatedPersonRow[]>(),
 
-    supabase
+    client
       .from("promises_to_pay")
       .select("*")
       .eq("account_holder_id", accountHolder.id)
@@ -70,7 +75,7 @@ export async function getAccount(
       })
       .returns<PromiseToPayRow[]>(),
 
-    supabase
+    client
       .from("transactions")
       .select("*")
       .eq("account_holder_id", accountHolder.id)
@@ -79,7 +84,7 @@ export async function getAccount(
       })
       .returns<TransactionRow[]>(),
 
-    supabase
+    client
       .from("call_appointments")
       .select("*")
       .eq("account_holder_id", accountHolder.id)

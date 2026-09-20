@@ -139,7 +139,7 @@ describe("parseMessage", () => {
             Authorization: "Bearer test-api-key",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://example.test",
-            "X-OpenRouter-Title": "PayPathIQ Account Portal",
+            "X-OpenRouter-Title": "Account Self-Service Chatbot",
           },
         }),
       );

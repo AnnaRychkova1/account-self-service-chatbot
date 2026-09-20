@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Account Self-Service Chatbot",
   description:
-    "A minimal account self-service chatbot challenge starter.",
+    "A portfolio project demonstrating secure account self-service workflows with chat, authentication, and database-level access control.",
 };
 
 export default function RootLayout({

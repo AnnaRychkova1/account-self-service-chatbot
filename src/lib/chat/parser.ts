@@ -128,7 +128,7 @@ async function requestParsedAction(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.APP_URL ?? "http://localhost:3000",
-        "X-OpenRouter-Title": "PayPathIQ Account Portal",
+        "X-OpenRouter-Title": "Account Self-Service Chatbot",
       },
       body: JSON.stringify({
         model,

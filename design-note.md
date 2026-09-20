@@ -38,7 +38,7 @@ Ambiguous or incomplete requests are not guessed. The chatbot asks for clarifica
 
 The application intentionally uses deterministic services for validation and side effects rather than allowing the LLM to perform operations. This adds some routing and mapping code but keeps account changes predictable and testable.
 
-The implementation uses a mocked payment workflow because integration with a real payment provider is outside the challenge scope.
+The implementation uses a mocked payment workflow because integration with a real payment provider is outside the scope of this project.
 
 ## Security and Identity
 
@@ -46,10 +46,10 @@ Secrets for Supabase, OpenRouter, and Resend are stored in environment variables
 
 Database operations, notification delivery, and PDF generation are performed server-side. Sensitive account details are excluded from notification email bodies and placed in the encrypted PDF attachment instead.
 
-The application assumes the account identity supplied by the starter application is already trusted. Production use would require authenticated sessions, authorization checks, and server-side derivation of the account identity rather than trusting a client-provided account identifier.
+Account access is tied to an authenticated Supabase user. The server resolves the current account from the authenticated user's identity rather than accepting an account identifier from the browser. Row Level Security policies provide an additional database-level boundary so an authenticated user cannot read or modify another account's data.
 
 ## Monitoring and Next Steps
 
 The application records notification attempts and safely surfaces service failures through server-side errors and logs.
 
-For production use, the next steps would include authenticated account access, stronger authorization for representatives, structured application monitoring, retry handling for failed notifications, rate limiting, and integration with a real payment provider.
+For production use, the next steps would include stronger authorization for representatives, structured application monitoring, retry handling for failed notifications, rate limiting, and integration with a real payment provider.

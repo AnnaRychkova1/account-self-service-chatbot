@@ -1,7 +1,6 @@
 # Verification Matrix
 
-This matrix maps the main challenge requirements and acceptance scenarios to
-their implementation and automated test coverage.
+This matrix maps the main application requirements to their implementation and automated test coverage.
 
 | #   | Requirement / Scenario                                                             | Implementation                                                                                               | Automated Verification                             |
 | --- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
@@ -31,11 +30,12 @@ their implementation and automated test coverage.
 | 24  | Avoid sensitive account details in the notification email body                     | `src/lib/notifications/account-change-notification.ts`                                                       | Notification content tests                         |
 | 25  | Record notification attempts and delivery status in Supabase                       | `src/lib/notifications/account-change-notification.ts`                                                       | Notification persistence tests                     |
 | 26  | Return a complete account summary when no specific account field is requested      | `src/lib/chat/handlers/chat-read.ts`, `src/lib/account/services/account-get.ts`                              | Account read and summary tests                     |
+| 27  | Resolve the account from the authenticated Supabase user                           | `src/lib/auth/get-authenticated-user.ts`, `src/lib/account/services/account-current.ts`                      | RLS integration tests                              |
+| 28  | Prevent authenticated users from reading or modifying another user's account data  | `supabase/migrations/20260920150000_add_rls_security_policies.sql`                                           | RLS integration tests                              |
 
-## Acceptance Contracts
+## Acceptance Scenarios
 
-The starter acceptance contracts are implemented in the acceptance test suite
-and cover:
+The acceptance test suite covers:
 
 - updating the account-holder phone number and queuing a notification;
 - adding an authorized related person;
@@ -46,7 +46,7 @@ and cover:
 
 ## Cross-Cutting Verification
 
-The focused unit, handler, parser, and acceptance tests also verify:
+The focused unit, handler, parser, integration, and acceptance tests also verify:
 
 - business validation occurs before persistence;
 - malformed or unsupported LLM output cannot directly perform side effects;
@@ -57,11 +57,12 @@ The focused unit, handler, parser, and acceptance tests also verify:
 - notification failures are observable without exposing sensitive account data;
 - external notification boundaries are mocked in automated tests;
 - notification email content remains generic;
-- sensitive account information is placed in the encrypted PDF attachment.
+- sensitive account information is placed in the encrypted PDF attachment;
+- account access is scoped to the authenticated user through Supabase RLS.
 
-## Final Verification
+## Verification
 
-Before submission, the project is verified with:
+The project can be verified locally with:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -69,4 +70,10 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+The Supabase account-isolation integration tests can be run separately with:
+
+```bash
+RLS_INTEGRATION=true pnpm vitest run src/lib/__tests__/rls-isolation.integration.test.ts
 ```

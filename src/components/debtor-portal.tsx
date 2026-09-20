@@ -27,7 +27,10 @@ import {
   type RelatedPerson,
   type Transaction,
 } from "@/lib/account/types";
-import type { ChatResponse, PendingChatAction } from "@/lib/chat/types";
+import type {
+  ChatResponse,
+  // PendingChatAction
+} from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
 
 type PortalProps = {
@@ -102,9 +105,9 @@ export function DebtorPortal({ accountContext }: PortalProps) {
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const fullName = `${accountContext.account.accountHolderFirstName} ${accountContext.account.accountHolderLastName}`;
-  const [pendingAction, setPendingAction] = useState<PendingChatAction | null>(
-    null,
-  );
+  // const [pendingAction, setPendingAction] = useState<PendingChatAction | null>(
+  //   null,
+  // );
 
   const handleSendMessage = async () => {
     const nextMessage = draft.trim();
@@ -133,10 +136,10 @@ export function DebtorPortal({ accountContext }: PortalProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountId: accountContext.account.accountId,
+          // accountId: accountContext.account.accountId,
           message: nextMessage,
           conversationId: "starter-conversation",
-          pendingAction: pendingAction ?? undefined,
+          // pendingAction: pendingAction ?? undefined,
           requestId,
         }),
       });
@@ -160,7 +163,7 @@ export function DebtorPortal({ accountContext }: PortalProps) {
         router.refresh();
       }
 
-      setPendingAction(body.pendingAction ?? null);
+      // setPendingAction(body.pendingAction ?? null);
 
       setMessages((currentMessages) => [
         ...currentMessages,
@@ -540,8 +543,7 @@ function ConversationView({
                 No conversation yet
               </h3>
               <p className="mt-3 max-w-md text-sm leading-7 text-slate-600">
-                Send the first message and the thread will call the starter chat
-                API route.
+                SSend the first message and the thread will call the chat API.
               </p>
             </div>
           </div>

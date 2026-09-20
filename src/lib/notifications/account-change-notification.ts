@@ -1,6 +1,7 @@
 import { Resend } from "resend";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthenticatedServerSupabaseClient } from "@/lib/supabase/server";
 import { generateEncryptedAccountSummaryPdf } from "@/lib/notifications/account-summary-pdf";
 
 import type { AccountContext } from "@/lib/account/types";
@@ -28,7 +29,7 @@ export async function sendAccountChangeNotification(
     throw new Error("Notification recipient email is required.");
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createAuthenticatedServerSupabaseClient();
 
   const attemptResult = await supabase
     .from("notification_attempts")
@@ -114,7 +115,7 @@ export async function sendAccountChangeNotification(
 
 async function getAccountHolderId(
   accountId: string,
-  supabase: ReturnType<typeof createServerSupabaseClient>,
+  supabase: SupabaseClient,
 ): Promise<string> {
   const normalizedAccountId = accountId.trim();
 
@@ -139,7 +140,7 @@ async function updateNotificationAttempt(
   notificationId: string,
   status: "sent" | "failed" | "logged",
   errorMessage: string | null,
-  supabase: ReturnType<typeof createServerSupabaseClient>,
+  supabase: SupabaseClient,
 ): Promise<void> {
   const result = await supabase
     .from("notification_attempts")

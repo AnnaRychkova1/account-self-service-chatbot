@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/chat/route";
+import { getCurrentAccount } from "@/lib/account/services/account-current";
 import { executeChatAction } from "@/lib/chat/actions";
+import {
+  clearPendingChatAction,
+  getPendingChatAction,
+  savePendingChatAction,
+} from "@/lib/chat/services/pending-action";
 import { parseMessage } from "@/lib/chat/parser";
 
 import type { PendingChatAction } from "@/lib/chat/types";
@@ -14,8 +20,22 @@ vi.mock("@/lib/chat/actions", () => ({
   executeChatAction: vi.fn(),
 }));
 
+vi.mock("@/lib/account/services/account-current", () => ({
+  getCurrentAccount: vi.fn(),
+}));
+
+vi.mock("@/lib/chat/services/pending-action", () => ({
+  getPendingChatAction: vi.fn(),
+  savePendingChatAction: vi.fn(),
+  clearPendingChatAction: vi.fn(),
+}));
+
 const mockedParseMessage = vi.mocked(parseMessage);
 const mockedExecuteChatAction = vi.mocked(executeChatAction);
+const mockedGetCurrentAccount = vi.mocked(getCurrentAccount);
+const mockedGetPendingChatAction = vi.mocked(getPendingChatAction);
+const mockedSavePendingChatAction = vi.mocked(savePendingChatAction);
+const mockedClearPendingChatAction = vi.mocked(clearPendingChatAction);
 
 function createRequest(body: unknown): Request {
   return new Request("http://localhost:3000/api/chat", {
@@ -30,46 +50,34 @@ function createRequest(body: unknown): Request {
 describe("POST /api/chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
-  it("returns 400 when accountId is missing", async () => {
-    const response = await POST(
-      createRequest({
-        message: "Show my phone number",
-      }),
-    );
+    mockedGetCurrentAccount.mockResolvedValue({
+      account: {
+        accountId: "account-123",
+      },
+    } as Awaited<ReturnType<typeof getCurrentAccount>>);
 
-    expect(response.status).toBe(400);
-
-    await expect(response.json()).resolves.toEqual({
-      error: "accountId and message are required.",
-    });
-
-    expect(mockedParseMessage).not.toHaveBeenCalled();
-    expect(mockedExecuteChatAction).not.toHaveBeenCalled();
+    mockedGetPendingChatAction.mockResolvedValue(null);
+    mockedSavePendingChatAction.mockResolvedValue(undefined);
+    mockedClearPendingChatAction.mockResolvedValue(undefined);
   });
 
   it("returns 400 when message is missing", async () => {
-    const response = await POST(
-      createRequest({
-        accountId: "account-123",
-      }),
-    );
+    const response = await POST(createRequest({}));
 
     expect(response.status).toBe(400);
 
     await expect(response.json()).resolves.toEqual({
-      error: "accountId and message are required.",
+      error: "Message is required.",
     });
 
     expect(mockedParseMessage).not.toHaveBeenCalled();
     expect(mockedExecuteChatAction).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when accountId and message contain only whitespace", async () => {
+  it("returns 400 when message contains only whitespace", async () => {
     const response = await POST(
       createRequest({
-        accountId: "   ",
         message: "   ",
       }),
     );
@@ -77,14 +85,14 @@ describe("POST /api/chat", () => {
     expect(response.status).toBe(400);
 
     await expect(response.json()).resolves.toEqual({
-      error: "accountId and message are required.",
+      error: "Message is required.",
     });
 
     expect(mockedParseMessage).not.toHaveBeenCalled();
     expect(mockedExecuteChatAction).not.toHaveBeenCalled();
   });
 
-  it("trims accountId and message before processing", async () => {
+  it("trims the message before processing", async () => {
     mockedParseMessage.mockResolvedValueOnce({
       action: "read_account",
       fields: {
@@ -101,7 +109,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "  account-123  ",
         message: "  Show my phone number  ",
         conversationId: "conversation-123",
       }),
@@ -110,6 +117,8 @@ describe("POST /api/chat", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+
+    expect(mockedGetCurrentAccount).toHaveBeenCalled();
 
     expect(mockedParseMessage).toHaveBeenCalledWith(
       "Show my phone number",
@@ -125,6 +134,7 @@ describe("POST /api/chat", () => {
         },
         missingFields: [],
       },
+      requestId: undefined,
     });
 
     expect(body).toEqual({
@@ -142,6 +152,11 @@ describe("POST /api/chat", () => {
       },
       pendingAction: null,
     });
+
+    expect(mockedClearPendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "conversation-123",
+    );
   });
 
   it("uses the default conversation ID when none is provided", async () => {
@@ -161,7 +176,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Show my email",
       }),
     );
@@ -169,6 +183,11 @@ describe("POST /api/chat", () => {
     const body = await response.json();
 
     expect(body.conversationId).toBe("starter-conversation");
+
+    expect(mockedGetPendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "starter-conversation",
+    );
   });
 
   it("allows a direct partial account-holder update", async () => {
@@ -188,7 +207,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Change my city to Cork",
       }),
     );
@@ -204,9 +222,15 @@ describe("POST /api/chat", () => {
         },
         missingFields: [],
       },
+      requestId: undefined,
     });
 
     expect(body.pendingAction).toBeNull();
+
+    expect(mockedClearPendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "starter-conversation",
+    );
   });
 
   it("does not normalize an account-holder update with no supplied fields", async () => {
@@ -224,7 +248,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Change my phone number",
       }),
     );
@@ -238,6 +261,7 @@ describe("POST /api/chat", () => {
         fields: {},
         missingFields: ["phone"],
       },
+      requestId: undefined,
     });
 
     expect(body.pendingAction).toEqual({
@@ -245,6 +269,16 @@ describe("POST /api/chat", () => {
       fields: {},
       missingFields: ["phone"],
     });
+
+    expect(mockedSavePendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "starter-conversation",
+      {
+        action: "update_account_holder",
+        fields: {},
+        missingFields: ["phone"],
+      },
+    );
   });
 
   it("preserves missing fields during an account-holder follow-up turn", async () => {
@@ -253,6 +287,8 @@ describe("POST /api/chat", () => {
       fields: {},
       missingFields: ["firstName", "lastName"],
     };
+
+    mockedGetPendingChatAction.mockResolvedValueOnce(pendingAction);
 
     mockedParseMessage.mockResolvedValueOnce({
       action: "update_account_holder",
@@ -270,13 +306,17 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Jane",
-        pendingAction,
+        conversationId: "conversation-123",
       }),
     );
 
     const body = await response.json();
+
+    expect(mockedGetPendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "conversation-123",
+    );
 
     expect(mockedParseMessage).toHaveBeenCalledWith("Jane", pendingAction);
 
@@ -289,6 +329,7 @@ describe("POST /api/chat", () => {
         },
         missingFields: ["lastName"],
       },
+      requestId: undefined,
     });
 
     expect(body.pendingAction).toEqual({
@@ -298,6 +339,18 @@ describe("POST /api/chat", () => {
       },
       missingFields: ["lastName"],
     });
+
+    expect(mockedSavePendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "conversation-123",
+      {
+        action: "update_account_holder",
+        fields: {
+          firstName: "Jane",
+        },
+        missingFields: ["lastName"],
+      },
+    );
   });
 
   it("does not normalize missing fields for another action", async () => {
@@ -318,7 +371,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Add Mark Murphy",
       }),
     );
@@ -334,6 +386,7 @@ describe("POST /api/chat", () => {
         },
         missingFields: ["email", "phone", "authorizedToAct"],
       },
+      requestId: undefined,
     });
 
     expect(body.pendingAction).toEqual({
@@ -343,6 +396,18 @@ describe("POST /api/chat", () => {
       },
       missingFields: ["email", "phone", "authorizedToAct"],
     });
+
+    expect(mockedSavePendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "starter-conversation",
+      {
+        action: "add_related_person",
+        fields: {
+          name: "Mark Murphy",
+        },
+        missingFields: ["email", "phone", "authorizedToAct"],
+      },
+    );
   });
 
   it("completes an account update using a follow-up turn", async () => {
@@ -351,6 +416,10 @@ describe("POST /api/chat", () => {
       fields: {},
       missingFields: ["phone"],
     };
+
+    mockedGetPendingChatAction
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(pendingAction);
 
     mockedParseMessage
       .mockResolvedValueOnce(pendingAction)
@@ -376,7 +445,6 @@ describe("POST /api/chat", () => {
 
     const firstResponse = await POST(
       createRequest({
-        accountId: "account-123",
         conversationId: "conversation-123",
         message: "Change my phone number",
       }),
@@ -386,12 +454,16 @@ describe("POST /api/chat", () => {
 
     expect(firstBody.pendingAction).toEqual(pendingAction);
 
+    expect(mockedSavePendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "conversation-123",
+      pendingAction,
+    );
+
     const secondResponse = await POST(
       createRequest({
-        accountId: "account-123",
         conversationId: "conversation-123",
         message: "+353831112233",
-        pendingAction: firstBody.pendingAction,
       }),
     );
 
@@ -412,11 +484,54 @@ describe("POST /api/chat", () => {
         },
         missingFields: [],
       },
+      requestId: undefined,
     });
 
     expect(secondBody.conversationId).toBe("conversation-123");
     expect(secondBody.result.success).toBe(true);
     expect(secondBody.pendingAction).toBeNull();
+
+    expect(mockedClearPendingChatAction).toHaveBeenCalledWith(
+      "account-123",
+      "conversation-123",
+    );
+  });
+
+  it("passes requestId to action execution", async () => {
+    mockedParseMessage.mockResolvedValueOnce({
+      action: "read_account",
+      fields: {
+        requestedField: "balance",
+      },
+      missingFields: [],
+    });
+
+    mockedExecuteChatAction.mockResolvedValueOnce({
+      action: "read_account",
+      success: true,
+      reply: "Your current balance is €950.00.",
+    });
+
+    const response = await POST(
+      createRequest({
+        message: "Show my balance",
+        requestId: "request-123",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+
+    expect(mockedExecuteChatAction).toHaveBeenCalledWith({
+      accountId: "account-123",
+      parsedAction: {
+        action: "read_account",
+        fields: {
+          requestedField: "balance",
+        },
+        missingFields: [],
+      },
+      requestId: "request-123",
+    });
   });
 
   it("returns 429 when the AI provider rate limit is reached", async () => {
@@ -428,7 +543,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Show my balance",
       }),
     );
@@ -450,7 +564,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Show my balance",
       }),
     );
@@ -479,7 +592,6 @@ describe("POST /api/chat", () => {
 
     const response = await POST(
       createRequest({
-        accountId: "account-123",
         message: "Show my balance",
       }),
     );
